@@ -36,7 +36,7 @@ export default function Home() {
 
       {/* Card de Destaque - Elemento de Acesso à Busca */}
       <section className="px-6 mt-6">
-        <Link href="/busca"> 
+        <Link href="/roteiro"> 
           <div className="relative group cursor-pointer overflow-hidden rounded-3xl shadow-xl aspect-[4/3]">
             {/* Imagem de Fundo (Placeholder enquanto você não sobe a real) */}
             {/* --- ATUALIZAÇÃO DA IMAGEM --- */}
