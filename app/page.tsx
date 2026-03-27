@@ -45,8 +45,7 @@ export default function Home() {
 
       {/* Card de Destaque - Elemento de Acesso à Busca */}
       <section className="px-6 mt-6">
-        {resultados.map((rota) => (
-          <Link href={`/roteiro/${rota.id}`} key={rota.id}>
+          <Link href={`/roteiro/1`} key={`1`}>
             <div className="relative group cursor-pointer overflow-hidden rounded-3xl shadow-xl aspect-[4/3]">
               {/* Imagem de Fundo (Placeholder enquanto você não sobe a real) */}
               {/* --- ATUALIZAÇÃO DA IMAGEM --- */}
@@ -80,7 +79,6 @@ export default function Home() {
               </div>
             </div>
           </Link>
-        ))}
       </section>
 
       {/* Lista Rápida de Benefícios (conforme o Figma) */}
