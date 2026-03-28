@@ -83,15 +83,15 @@ export default function Home() {
 
       {/* Lista Rápida de Benefícios (conforme o Figma) */}
       <section className="px-6 mt-10 space-y-6">
-        <div className="flex items-start gap-4">
-          < Link href={`/desafios`} >
+        < Link href={`/desafios`} >
+          <div className="flex items-start gap-4">
             <div className="bg-orange-50 p-2 rounded-xl text-orange-600 font-bold">🗺️</div>
             <div>
               <h4 className="font-bold text-gray-900">Roteiros Prontos</h4>
               <p className="text-xs text-gray-500">Do café da manhã ao samba, roteiros completos passo a passo.</p>
             </div>
-          </Link>
-        </div>
+          </div>
+        </Link>
 
         <div className="flex items-start gap-4">
           <div className="bg-blue-50 p-2 rounded-xl text-blue-600 font-bold">👥</div>
