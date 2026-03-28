@@ -45,50 +45,52 @@ export default function Home() {
 
       {/* Card de Destaque - Elemento de Acesso à Busca */}
       <section className="px-6 mt-6">
-          <Link href={`/roteiro/1`} key={`1`}>
-            <div className="relative group cursor-pointer overflow-hidden rounded-3xl shadow-xl aspect-[4/3]">
-              {/* Imagem de Fundo (Placeholder enquanto você não sobe a real) */}
-              {/* --- ATUALIZAÇÃO DA IMAGEM --- */}
-              {destaque.imageUrl ? (
-                <Image
-                  src={destaque.imageUrl} // Usando o caminho definido no MockData
-                  alt={destaque.title}
-                  fill // Faz a imagem preencher o contêiner 'relative'
-                  className="object-cover group-hover:scale-105 transition-transform duration-300" // Cobre a área e adiciona efeito hover
-                  priority // Carrega esta imagem com prioridade (LCP)
-                />
-              ) : (
-                // Esqueleto de carregamento se não houver imagem
-                <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-              )}
-              {/* ------------------------------- */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
-              <div className="absolute inset-0 bg-gray-200 animate-pulse" /> {/* Esqueleto de carregamento */}
+        <Link href={`/roteiro/1`} key={`1`}>
+          <div className="relative group cursor-pointer overflow-hidden rounded-3xl shadow-xl aspect-[4/3]">
+            {/* Imagem de Fundo (Placeholder enquanto você não sobe a real) */}
+            {/* --- ATUALIZAÇÃO DA IMAGEM --- */}
+            {destaque.imageUrl ? (
+              <Image
+                src={destaque.imageUrl} // Usando o caminho definido no MockData
+                alt={destaque.title}
+                fill // Faz a imagem preencher o contêiner 'relative'
+                className="object-cover group-hover:scale-105 transition-transform duration-300" // Cobre a área e adiciona efeito hover
+                priority // Carrega esta imagem com prioridade (LCP)
+              />
+            ) : (
+              // Esqueleto de carregamento se não houver imagem
+              <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+            )}
+            {/* ------------------------------- */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
+            <div className="absolute inset-0 bg-gray-200 animate-pulse" /> {/* Esqueleto de carregamento */}
 
-              {/* Conteúdo do Card */}
-              <div className="absolute bottom-0 left-0 p-6 z-20 w-full text-white">
-                <div className="flex gap-2 mb-2">
-                  <span className="text-[10px] font-bold bg-white/20 backdrop-blur-md px-2 py-1 rounded">GASTRONOMIA</span>
-                  <span className="text-[10px] font-bold bg-white/20 backdrop-blur-md px-2 py-1 rounded">CULTURA</span>
-                </div>
-                <h3 className="text-xl font-bold mb-1">{destaque.title}</h3>
-                <div className="flex items-center gap-4 text-xs opacity-90">
-                  <span>📍 {destaque.stopsCount} paradas</span>
-                  <span>⏱️ ~{destaque.duration}</span>
-                </div>
+            {/* Conteúdo do Card */}
+            <div className="absolute bottom-0 left-0 p-6 z-20 w-full text-white">
+              <div className="flex gap-2 mb-2">
+                <span className="text-[10px] font-bold bg-white/20 backdrop-blur-md px-2 py-1 rounded">GASTRONOMIA</span>
+                <span className="text-[10px] font-bold bg-white/20 backdrop-blur-md px-2 py-1 rounded">CULTURA</span>
+              </div>
+              <h3 className="text-xl font-bold mb-1">{destaque.title}</h3>
+              <div className="flex items-center gap-4 text-xs opacity-90">
+                <span>📍 {destaque.stopsCount} paradas</span>
+                <span>⏱️ ~{destaque.duration}</span>
               </div>
             </div>
-          </Link>
+          </div>
+        </Link>
       </section>
 
       {/* Lista Rápida de Benefícios (conforme o Figma) */}
       <section className="px-6 mt-10 space-y-6">
         <div className="flex items-start gap-4">
-          <div className="bg-orange-50 p-2 rounded-xl text-orange-600 font-bold">🗺️</div>
-          <div>
-            <h4 className="font-bold text-gray-900">Roteiros Prontos</h4>
-            <p className="text-xs text-gray-500">Do café da manhã ao samba, roteiros completos passo a passo.</p>
-          </div>
+          < Link href={`/desafios`} >
+            <div className="bg-orange-50 p-2 rounded-xl text-orange-600 font-bold">🗺️</div>
+            <div>
+              <h4 className="font-bold text-gray-900">Roteiros Prontos</h4>
+              <p className="text-xs text-gray-500">Do café da manhã ao samba, roteiros completos passo a passo.</p>
+            </div>
+          </Link>
         </div>
 
         <div className="flex items-start gap-4">
