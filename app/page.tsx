@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link'; // Importante para a navegação
 import { ROUTES_MOCK } from '@/constants/mockData';
 import { HelpCircle } from 'lucide-react';
-import BottomNav from '@/components/ButtonNav';
+
 
 export default function Home() {
   // Pegamos o primeiro roteiro do mock para o destaque
@@ -101,8 +101,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-      {/* ButtonNavgation */}
-      < BottomNav />
+
     </main>
   );
 }
