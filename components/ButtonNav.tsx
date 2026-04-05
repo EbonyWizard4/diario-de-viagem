@@ -37,7 +37,7 @@ export default function BottomNav() {
       </Link>
 
       {/* Perfil */}
-      <Link href="/" className="flex flex-col items-center gap-1">
+      <Link href="/perfil" className="flex flex-col items-center gap-1">
         <User className={`${isActive('/perfil')} w-6 h-6 transition-colors`} />
       </Link>
 
