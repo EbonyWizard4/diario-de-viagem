@@ -32,8 +32,8 @@ export default function BottomNav() {
       </div>
 
       {/* Mapa (Pode ser uma página futura) */}
-      <Link href="/" className="flex flex-col items-center gap-1">
-        <Map className={`${isActive('/mapa')} w-6 h-6 transition-colors`} />
+      <Link href="/desafios" className="flex flex-col items-center gap-1">
+        <Map className={`${isActive('/desafios')} w-6 h-6 transition-colors`} />
       </Link>
 
       {/* Perfil */}

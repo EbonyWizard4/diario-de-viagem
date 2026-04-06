@@ -42,9 +42,9 @@ export default function PerfilPage() {
       <header className="bg-white px-6 pt-12 pb-8 rounded-b-[40px] shadow-sm">
         <div className="flex justify-between items-start mb-6">
           <div className="relative">
-            <div className="w-24 h-24 rounded-3xl bg-orange-100 overflow-hidden border-4 border-white shadow-md">
+            <div className="relative w-24 h-24 rounded-3xl bg-orange-100 overflow-hidden border-4 border-white shadow-md">
               {user.photoURL ? (
-                <Image src={user.photoURL} alt={user.displayName || ""} fill className="rounded-3xl border-4 border-white shadow-md object-cover" />
+                <Image src={user.photoURL} alt={user.displayName || ""} fill className="rounded-3xl border-4 border-white shadow-md object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"/>
               ) : (
                 <div className="w-full h-full rounded-3xl bg-orange-100 flex items-center justify-center text-3xl">👤</div>
               )}
