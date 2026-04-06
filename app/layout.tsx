@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import BottomNav from '@/components/ButtonNav';
 import "./globals.css";
@@ -17,12 +17,19 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// 1. O que fica no Metadata (Informações de busca)
 export const metadata: Metadata = {
-  title: 'Guia Local',
+  title: 'Meu Perfil | Guia Local',
   description: 'Seu guia de roteiros locais',
-  themeColor: '#ea580c', // Isso deixa a barra do navegador laranja no Android
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1', // Evita zoom indesejado em inputs
+};
 
+// 2. O que vai para o Viewport (Configurações do dispositivo/tela)
+export const viewport: Viewport = {
+  themeColor: '#ea580c', // Isso deixa a barra do navegador laranja no Android
+  // Evita zoom indesejado em inputs
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -32,8 +39,9 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="pt-br"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
         <AuthProvider>

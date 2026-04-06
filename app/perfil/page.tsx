@@ -1,5 +1,6 @@
 'use client';
 
+import {useAuth} from '@/context/AuthContext'
 import Image from 'next/image';
 import { Settings, MapPin, Award, Heart, LogOut, ChevronRight } from 'lucide-react';
 import { ROUTES_MOCK } from '@/constants/mockData';
@@ -112,7 +113,7 @@ export default function PerfilPage() {
           {favoritos.map((rota) => (
             <Link href={`/roteiro/${rota.id}`} key={rota.id} className="flex bg-white p-3 rounded-2xl border border-gray-100 shadow-sm gap-4 active:scale-[0.98] transition-transform">
               <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                <Image src={rota.imageUrl} alt={rota.title} fill className="object-cover" />
+                <Image src={rota.imageUrl} alt={rota.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
               </div>
               <div className="flex flex-col justify-center overflow-hidden">
                 <h4 className="font-bold text-gray-900 text-sm truncate">{rota.title}</h4>
@@ -131,9 +132,12 @@ export default function PerfilPage() {
         </div>
       </section>
 
-      {/* Botão de Logout */}
-      <section className="px-6 mt-10">
-        <button className="w-full flex items-center justify-center gap-2 py-4 bg-red-50 text-red-600 font-bold rounded-2xl border border-red-100">
+      {/* Botão de Sair no final */}
+      <section className="px-6 mt-12 mb-10">
+        <button 
+          onClick={logout}
+          className="w-full flex items-center justify-center gap-2 py-4 bg-red-50 text-red-600 font-bold rounded-2xl border border-red-100 active:scale-95 transition-all"
+        >
           <LogOut className="w-4 h-4" /> Sair da conta
         </button>
       </section>
