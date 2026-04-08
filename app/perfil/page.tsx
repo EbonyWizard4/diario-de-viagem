@@ -28,7 +28,7 @@ export default function PerfilPage() {
           onClick={loginComGoogle}
           className="flex items-center gap-3 bg-white border border-gray-200 px-6 py-3 rounded-2xl shadow-sm font-bold text-gray-700 hover:bg-gray-50 active:scale-95 transition-all"
         >
-          <Image src="https://www.google.com/favicon.ico" alt="Google" width={16} height={16} />
+          <Image src="https://www.google.com/favicon.ico" alt="Google" width={16} height={16} priority />
           Entrar com Google
         </button>
       </main>
