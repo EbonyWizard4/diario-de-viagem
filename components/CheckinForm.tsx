@@ -63,7 +63,6 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
 
             // SE TIVER FOTO, FAZ O UPLOAD PRIMEIRO
             if (photo) {
-                console.log("📸 Iniciando upload da foto...", photo);
                 const filename = `visita-${Date.now()}.jpg`;
                 const response = await fetch(`/api/upload?filename=${filename}`, {
                     method: 'POST',
@@ -78,7 +77,6 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
                 }
 
                 const newBlob = await response.json();
-                console.log("✅ Upload concluído com sucesso! URL:", newBlob.url);
                 fotoUrl = newBlob.url; // Esse é o link público da foto!
             }
 
