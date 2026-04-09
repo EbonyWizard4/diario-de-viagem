@@ -1,25 +1,28 @@
+// src/services/checkinService.ts
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  GeoPoint // <--- ADICIONE ESTE IMPORT AQUI
+} from 'firebase/firestore';
 
 export const registrarVisita = async (
-  userId: string, 
-  placeName: string, 
-  rating: number, 
-  comment: string
+  userId: string,
+  placeName: string,
+  rating: number,
+  comment: string,
+  location: GeoPoint | null, // Novo campo
+  photoUrl: string // <--- Novo parâmetro
 ) => {
-  try {
-    const docRef = await addDoc(collection(db, 'checkins'), {
-      userId,
-      placeName,
-      rating,   // Novo campo
-      comment,  // Novo campo
-      timestamp: serverTimestamp(),
-      status: 'avulso',
-      imageUrl: null // Deixamos como null até implementarmos o Storage
-    });
-    return docRef.id;
-  } catch (error) {
-    console.error("Erro ao registrar visita: ", error);
-    throw error;
-  }
+  return await addDoc(collection(db, 'checkins'), {
+    userId,
+    placeName,
+    rating,
+    comment,
+    location, // Salva como GeoPoint no Firestore
+    photoUrl, // <--- Salva o link aqui
+    timestamp: serverTimestamp(),
+    status: 'avulso'
+  });
 };
