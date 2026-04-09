@@ -1,21 +1,24 @@
-// src/app/api/upload/route.ts
-import { put } from "@vercel/blob";
+import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request): Promise<NextResponse> {
-    //conexão teste para o vercel blob
-    const { url } = await put('articles/blob.txt', 'Hello World!', { access: 'public' });
-    const { searchParams } = new URL(request.url);
-    const filename = searchParams.get('filename');
+  const { searchParams } = new URL(request.url);
+  const filename = searchParams.get('filename');
 
-    if (!filename || !request.body) {
-        return NextResponse.json({ error: 'Arquivo não enviado' }, { status: 400 });
-    }
+  // Validação básica
+  if (!filename) {
+    return NextResponse.json({ error: 'Nome do arquivo não fornecido' }, { status: 400 });
+  }
 
-    // Envia o arquivo para o armazenamento da Vercel
-    const blob = await put(filename, request.body, {
-        access: 'public',
+  try {
+    // O request.body já é o stream/blob que enviamos do formulário
+    const blob = await put(filename, request.body!, {
+      access: 'public',
     });
 
     return NextResponse.json(blob);
+  } catch (error) {
+    console.error("Erro no Vercel Blob:", error);
+    return NextResponse.json({ error: 'Falha no upload' }, { status: 500 });
+  }
 }
