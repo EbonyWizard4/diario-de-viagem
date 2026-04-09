@@ -74,7 +74,7 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
 
             const locationData = coordenadas ? new GeoPoint(coordenadas.lat, coordenadas.lng) : null;
             // AGORA SALVAMOS TUDO NO FIRESTORE (Incluindo a fotoUrl)
-            await registrarVisita(user.uid, local, nota, comentario, locationData, fotoUrl);
+            await registrarVisita(user.uid, local, nota, comentario, locationData, fotoUrl || ""); // Passa a URL da foto ou string vazia
 
             setSucesso(true); // Ativa a mensagem de sucesso
 
