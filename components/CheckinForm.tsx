@@ -63,12 +63,22 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
 
             // SE TIVER FOTO, FAZ O UPLOAD PRIMEIRO
             if (photo) {
+                console.log("📸 Iniciando upload da foto...", photo);
                 const filename = `visita-${Date.now()}.jpg`;
                 const response = await fetch(`/api/upload?filename=${filename}`, {
                     method: 'POST',
                     body: photo, // Nosso Blob da câmera
                 });
+
+                if (!response.ok) {
+                    // Aqui pegamos o erro que a API devolveu
+                    const errorData = await response.json();
+                    console.error("❌ Erro na resposta da API:", errorData);
+                    throw new Error("Falha no servidor de upload");
+                }
+
                 const newBlob = await response.json();
+                console.log("✅ Upload concluído com sucesso! URL:", newBlob.url);
                 fotoUrl = newBlob.url; // Esse é o link público da foto!
             }
 
