@@ -56,6 +56,7 @@ export default function Home() {
                 fill // Faz a imagem preencher o contêiner 'relative'
                 className="object-cover group-hover:scale-105 transition-transform duration-300" // Cobre a área e adiciona efeito hover
                 priority // Carrega esta imagem com prioridade (LCP)
+                loading="eager" // Carrega imediatamente para melhorar o LCP
               />
             ) : (
               // Esqueleto de carregamento se não houver imagem
