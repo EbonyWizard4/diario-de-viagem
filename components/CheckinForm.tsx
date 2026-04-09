@@ -6,6 +6,8 @@ import { Star, Loader2, ChevronLeft, MapPin } from 'lucide-react';
 import { registrarVisita } from '@/services/checkinService';
 import { useAuth } from '@/context/AuthContext';
 import { GeoPoint } from 'firebase/firestore'; // Importe o tipo do Firebase
+import { AnimatePresence } from 'framer-motion';
+import SuccessFeedback from './SuccessFeedback'; // Importe o componente de feedback
 
 // src/components/CheckinForm.tsx
 
@@ -22,6 +24,9 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
     const [nota, setNota] = useState(5);
     const [comentario, setComentario] = useState('');
     const [enviando, setEnviando] = useState(false);
+
+    // confirma que deu sucesso no post.
+    const [sucesso, setSucesso] = useState(false);
 
     // Novo estado para a localização
     const [coordenadas, setCoordenadas] = useState<{ lat: number, lng: number } | null>(null);
@@ -48,6 +53,7 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
         }
     }, []);
 
+    //Salvar o post.
     const handleSalvar = async () => {
         if (!user || !local) return;
         setEnviando(true);
@@ -70,7 +76,13 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
             // AGORA SALVAMOS TUDO NO FIRESTORE (Incluindo a fotoUrl)
             await registrarVisita(user.uid, local, nota, comentario, locationData, fotoUrl);
 
-            onSuccess();
+            setSucesso(true); // Ativa a mensagem de sucesso
+
+            // Aguarda 2 segundos para o usuário ver a mensagem antes de fechar tudo
+            setTimeout(() => {
+                onSuccess();
+            }, 2000);
+
         } catch (error) {
             console.error(error);
             alert("Erro ao processar registro.");
@@ -78,6 +90,8 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
             setEnviando(false);
         }
     };
+
+    // Elementos da interface do formulário
     return (
         <div className="space-y-6">
             {/* Botão voltar */}
@@ -114,6 +128,7 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
                 </div>
             </div>
 
+            {/* Comentário */}
             <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">O que achou?</label>
                 <textarea
@@ -125,6 +140,7 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
                 />
             </div>
 
+            {/* Botão de salvar */}
             <button
                 onClick={handleSalvar}
                 disabled={enviando || !local}
@@ -132,6 +148,17 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
             >
                 {enviando ? <Loader2 className="animate-spin" /> : "Confirmar Visita"}
             </button>
+
+            {/* Overlay de Sucesso com Framer Motion */}
+            // Dentro do return do CheckinForm.tsx
+            <AnimatePresence>
+                {sucesso && (
+                    <SuccessFeedback
+                        title="Visita Salva!"
+                        message="+10 pontos de explorador"
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
