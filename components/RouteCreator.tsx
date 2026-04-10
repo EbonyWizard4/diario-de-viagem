@@ -21,6 +21,8 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
     const [isSaving, setIsSaving] = useState(false);
     // 1. No topo, junto com os outros estados:
     const [isSuccess, setIsSuccess] = useState(false);
+    // Se tiver menos de 2 visitas, também é bom dar um aviso, mas mostrar a lista
+    const isDisabled = selectedIds.length < 2;
 
     // 2. Atualize a função handleSaveRoute:
     const handleSaveRoute = async () => {
@@ -61,7 +63,7 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
         }
     };
 
-// 3. RETORNO DE SUCESSO
+    // 3. RETORNO DE SUCESSO
     if (isSuccess) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 animate-in fade-in zoom-in duration-500">
@@ -76,11 +78,36 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
         );
     }
 
+    // 4. FEEDBACK PARA QUEM NÃO TEM VISITAS
+    if (!visitas || visitas.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12 px-6 text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="w-24 h-24 bg-blue-50 text-blue-500 rounded-[32px] flex items-center justify-center shadow-inner rotate-3">
+                    <Map size={48} strokeWidth={1.5} />
+                </div>
+
+                <div className="space-y-2">
+                    <h3 className="text-xl font-black text-gray-900 uppercase italic">Sua jornada começa aqui!</h3>
+                    <p className="text-gray-500 text-sm font-medium leading-relaxed">
+                        Para criar um roteiro, você precisa de pelo menos <span className="text-blue-600 font-bold">2 visitas</span> registradas no seu diário.
+                    </p>
+                </div>
+
+                <button
+                    onClick={onSuccess} // Fecha o menu para ele poder clicar em "Visita"
+                    className="w-full py-4 bg-gray-900 text-white font-black rounded-2xl active:scale-95 transition-all shadow-lg"
+                >
+                    ENTENDIDO, BORA PASSEAR!
+                </button>
+            </div>
+        );
+    }
+
 
     return (
-        
+
         <div className="space-y-6">
-            
+
             {/* Título e Input Nome */}
             <div className="space-y-3">
                 <input
