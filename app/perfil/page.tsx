@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 
 import { useAuth } from '@/context/AuthContext'
 import Image from 'next/image';
-import { Settings, MapPin, Award, Heart, LogOut, ChevronRight } from 'lucide-react';
+import { Settings, MapPin, Award, Heart, LogOut, ChevronRight, DollarSign, Map } from 'lucide-react';
 import { ROUTES_MOCK } from '@/constants/mockData';
 import Link from 'next/link';
 // Exemplo de função de Login para usar no componente
 import { signInWithPopup } from "firebase/auth";
 import { db, auth, googleProvider } from "@/lib/firebase";
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, } from 'firebase/firestore';
 import VisitCard from '@/components/VisitCard';
 
 export default function PerfilPage() {
@@ -23,6 +23,9 @@ export default function PerfilPage() {
   const [loadingVisitas, setLoadingVisitas] = useState(true);
   const [visitas, setVisitas] = useState<any[]>([]);
   const [exibirTodos, setExibirTodos] = useState(false); // Estado para o botão "Mostrar Mais"
+
+  const [activeTab, setActiveTab] = useState<'visitas' | 'rotas'>('visitas'); // Estado para controlar a aba ativa
+  const [rotas, setRotas] = useState<any[]>([]); // Estado para as rotas do usuário
 
   // Lógica para as 3 melhores e mais recentes
   // Primeiro, ordenamos por nota (descendente) e depois por data (que já vem do Firebase)
@@ -62,6 +65,18 @@ export default function PerfilPage() {
 
     return () => unsubscribe();
   }, [user, authLoading]); // Dependências atualizadas
+
+  // Busca as rotas do usuário para mostrar na aba "Meus Roteiros"
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    const q = query(collection(db, 'routes'), where('userId', '==', user.uid), orderBy('timestamp', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setRotas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribe();
+  }, [user, authLoading]);
+
 
   // 1. Enquanto o Firebase descobre se você está logado ou não
   if (authLoading) {
@@ -189,57 +204,114 @@ export default function PerfilPage() {
 
       {/* Card de Visitas Recentes */}
       <section className="mt-8">
-        <div className="flex justify-between items-center mb-4 px-6">
-          <h3 className="font-bold text-gray-900 flex items-center gap-2 uppercase text-xs tracking-widest">
-            <MapPin className="text-orange-600 w-5 h-5" /> Minhas Experiências
-          </h3>
-          {!exibirTodos && visitas.length > 3 && (
-            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-md">
-              TOP 3
-            </span>
-          )}
+        {/* Header com Abas */}
+        <div className="flex items-center gap-6 mb-6 border-b border-gray-100 px-8">
+          <button
+            onClick={() => setActiveTab('visitas')}
+            className={`pb-2 text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'visitas' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-400'
+              }`}
+          >
+            Experiências
+          </button>
+          <button
+            onClick={() => setActiveTab('rotas')}
+            className={`pb-2 text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'rotas' ? 'text-orange-600 border-b-2 border-orange-600' : 'text-gray-400'
+              }`}
+          >
+            Meus Roteiros
+          </button>
         </div>
 
-        {authLoading ? (
-          <div className="animate-pulse flex flex-col gap-4">
-            <div className="h-64 bg-gray-200 rounded-[32px]" />
-            <div className="h-64 bg-gray-200 rounded-[32px]" />
-          </div>
-        ) : loadingVisitas ? (
-          <div className="animate-pulse space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-gray-200 rounded-[32px]" />
-            ))}
-          </div>
-        ) : visitasExibidas.length > 0 ? (
-          <>
-            {visitasExibidas.map((visita) => (
-              <VisitCard
-                key={visita.id}
-                placeName={visita.placeName}
-                comment={visita.comment}
-                rating={visita.rating}
-                photoUrl={visita.photoUrl}
-                date={visita.timestamp}
-              />
-            ))}
-            {/* Botão Mostrar Mais / Ver Menos */}
-            {visitas.length > 3 && (
-              <button
-                onClick={() => setExibirTodos(!exibirTodos)}
-                className="w-full py-4 mt-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-2xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                {exibirTodos ? "Ver menos" : `Mostrar mais (${visitas.length - 3} restantes)`}
-                <ChevronRight className={`w-4 h-4 transition-transform ${exibirTodos ? 'rotate-90' : ''}`} />
-              </button>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-20 text-gray-400">
-            <p className="italic">Nenhuma visita registrada ainda.</p>
-            <p className="text-sm">Bora explorar a cidade?</p>
-          </div>
-        )}
+        <div className="px-2 space-y-4">
+          {/* --- CONTEÚDO: VISITAS --- */}
+          {activeTab === 'visitas' && (
+            <>
+              {loadingVisitas ? (
+                <div className="animate-pulse space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-64 bg-gray-200 rounded-[32px]" />
+                  ))}
+                </div>
+              ) : visitasExibidas.length > 0 ? (
+                <>
+                  {visitasExibidas.map((visita) => (
+                    <VisitCard
+                      key={visita.id}
+                      placeName={visita.placeName}
+                      comment={visita.comment}
+                      rating={visita.rating}
+                      photoUrl={visita.photoUrl}
+                      date={visita.timestamp}
+                    />
+                  ))}
+                  {/* Botão Mostrar Mais */}
+                  {visitas.length > 3 && (
+                    <button
+                      onClick={() => setExibirTodos(!exibirTodos)}
+                      className="w-full py-4 mt-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-2xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      {exibirTodos ? "Ver menos" : `Mostrar mais (${visitas.length - 3} restantes)`}
+                      <ChevronRight className={`w-4 h-4 transition-transform ${exibirTodos ? 'rotate-90' : ''}`} />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-20 text-gray-400 italic">
+                  Nenhuma visita registrada ainda.
+                </div>
+              )}
+            </>
+          )}
+
+          {/* --- CONTEÚDO: ROTAS --- */}
+          {activeTab === 'rotas' && (
+            <>
+              {rotas.length > 0 ? (
+                rotas.map((rota) => (
+                  <div key={rota.id} className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100 mb-6">
+                    {/* Header do Card de Rota similar ao VisitCard */}
+                    <div className="h-48 bg-orange-50 relative flex items-center justify-center overflow-hidden">
+                      <Map size={48} className="text-orange-200 absolute z-0" />
+                      <div className="absolute inset-0 bg-black/5" />
+                      <div className="absolute top-6 left-6 flex gap-1">
+                        {/* Badge de Duração */}
+                        <span className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black uppercase text-orange-600">
+                          {rota.duration?.value || '0'} {rota.duration?.unit || 'Tempo'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-8">
+                      <span className="text-[10px] font-black text-orange-600 uppercase italic tracking-widest">
+                        Roteiro • {rota.stops.length} Paradas
+                      </span>
+                      <h3 className="text-2xl font-black text-gray-900 uppercase italic mt-1 leading-tight">
+                        {rota.title}
+                      </h3>
+                      <p className="text-gray-500 text-sm font-medium mt-3 line-clamp-2">
+                        "{rota.description}"
+                      </p>
+
+                      <div className="mt-6 pt-6 border-t border-gray-100 flex justify-between items-center">
+                        <div className="flex items-center gap-2 text-gray-400 font-bold text-xs">
+                          <DollarSign size={14} className="text-orange-500" />
+                          CUSTO {rota.cost?.toUpperCase() || 'Não informado'}
+                        </div>
+                        <button className="p-3 bg-gray-900 text-white rounded-2xl">
+                          <ChevronRight size={20} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-20 text-gray-400 italic">
+                  Você ainda não criou nenhum roteiro.
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </section>
 
       {/* Botão de Sair no final */}
