@@ -1,24 +1,79 @@
 'use client';
 
-import {useAuth} from '@/context/AuthContext'
+import { useEffect, useState } from 'react';
+
+import { useAuth } from '@/context/AuthContext'
 import Image from 'next/image';
 import { Settings, MapPin, Award, Heart, LogOut, ChevronRight } from 'lucide-react';
 import { ROUTES_MOCK } from '@/constants/mockData';
 import Link from 'next/link';
 // Exemplo de função de Login para usar no componente
 import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase";
-
+import { db, auth, googleProvider } from "@/lib/firebase";
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import VisitCard from '@/components/VisitCard';
 
 export default function PerfilPage() {
-  // Vamos simular os favoritos pegando os 2 primeiros do mock
   const favoritos = ROUTES_MOCK.slice(0, 2);
 
-  // Logica do login
-  const { user, loginComGoogle, logout, loading } = useAuth();
+  // 1. Pegamos o 'loading' do AuthContext
+  const { user, loginComGoogle, logout, loading: authLoading } = useAuth();
 
-  if (loading) return <div className="p-10 text-center">Carregando...</div>;
+  // 2. Criamos o estado das visitas com o nome correto
+  const [loadingVisitas, setLoadingVisitas] = useState(true);
+  const [visitas, setVisitas] = useState<any[]>([]);
+  const [exibirTodos, setExibirTodos] = useState(false); // Estado para o botão "Mostrar Mais"
 
+  // Lógica para as 3 melhores e mais recentes
+  // Primeiro, ordenamos por nota (descendente) e depois por data (que já vem do Firebase)
+  const visitasExibidas = exibirTodos
+    ? visitas
+    : [...visitas]
+      .sort((a, b) => b.rating - a.rating) // Prioriza nota maior
+      .slice(0, 3); // Pega apenas as 3 primeiras
+
+  useEffect(() => {
+    // Se o Auth ainda está carregando ou se não tem usuário, não faz nada
+    // Usamos 'authLoading' para não confundir com o outro loading
+    if (authLoading || !user) return;
+
+    setLoadingVisitas(true);
+
+    const q = query(
+      collection(db, 'checkins'),
+      where('userId', '==', user.uid),
+      orderBy('timestamp', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q,
+      (snapshot) => {
+        const docs = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setVisitas(docs);
+        setLoadingVisitas(false);
+      },
+      (error) => {
+        console.error("Erro na busca:", error);
+        setLoadingVisitas(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user, authLoading]); // Dependências atualizadas
+
+  // 1. Enquanto o Firebase descobre se você está logado ou não
+  if (authLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin" />
+        <p className="mt-4 text-gray-500 font-bold animate-pulse">Sincronizando seu perfil...</p>
+      </div>
+    );
+  }
+
+  // 2. Se o loading acabou e realmente não tem ninguém logado
   if (!user) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen p-6 bg-white text-center">
@@ -35,7 +90,7 @@ export default function PerfilPage() {
     );
   }
 
-
+  // 3. Se chegou aqui, temos usuário e podemos renderizar a página principal
   return (
     <main className="flex flex-col min-h-screen bg-gray-50 pb-24">
       {/* Header do Perfil */}
@@ -44,7 +99,7 @@ export default function PerfilPage() {
           <div className="relative">
             <div className="relative w-24 h-24 rounded-3xl bg-orange-100 overflow-hidden border-4 border-white shadow-md">
               {user.photoURL ? (
-                <Image src={user.photoURL} alt={user.displayName || ""} fill className="rounded-3xl border-4 border-white shadow-md object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"/>
+                <Image src={user.photoURL} alt={user.displayName || ""} fill className="rounded-3xl border-4 border-white shadow-md object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
               ) : (
                 <div className="w-full h-full rounded-3xl bg-orange-100 flex items-center justify-center text-3xl">👤</div>
               )}
@@ -132,9 +187,64 @@ export default function PerfilPage() {
         </div>
       </section>
 
+      {/* Card de Visitas Recentes */}
+      <section className="mt-8">
+        <div className="flex justify-between items-center mb-4 px-6">
+          <h3 className="font-bold text-gray-900 flex items-center gap-2 uppercase text-xs tracking-widest">
+            <MapPin className="text-orange-600 w-5 h-5" /> Minhas Experiências
+          </h3>
+          {!exibirTodos && visitas.length > 3 && (
+            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-md">
+              TOP 3
+            </span>
+          )}
+        </div>
+
+        {authLoading ? (
+          <div className="animate-pulse flex flex-col gap-4">
+            <div className="h-64 bg-gray-200 rounded-[32px]" />
+            <div className="h-64 bg-gray-200 rounded-[32px]" />
+          </div>
+        ) : loadingVisitas ? (
+          <div className="animate-pulse space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-48 bg-gray-200 rounded-[32px]" />
+            ))}
+          </div>
+        ) : visitasExibidas.length > 0 ? (
+          <>
+            {visitasExibidas.map((visita) => (
+              <VisitCard
+                key={visita.id}
+                placeName={visita.placeName}
+                comment={visita.comment}
+                rating={visita.rating}
+                photoUrl={visita.photoUrl}
+                date={visita.timestamp}
+              />
+            ))}
+            {/* Botão Mostrar Mais / Ver Menos */}
+            {visitas.length > 3 && (
+              <button
+                onClick={() => setExibirTodos(!exibirTodos)}
+                className="w-full py-4 mt-2 bg-white border border-gray-200 text-gray-600 font-bold rounded-2xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                {exibirTodos ? "Ver menos" : `Mostrar mais (${visitas.length - 3} restantes)`}
+                <ChevronRight className={`w-4 h-4 transition-transform ${exibirTodos ? 'rotate-90' : ''}`} />
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-20 text-gray-400">
+            <p className="italic">Nenhuma visita registrada ainda.</p>
+            <p className="text-sm">Bora explorar a cidade?</p>
+          </div>
+        )}
+      </section>
+
       {/* Botão de Sair no final */}
       <section className="px-6 mt-12 mb-10">
-        <button 
+        <button
           onClick={logout}
           className="w-full flex items-center justify-center gap-2 py-4 bg-red-50 text-red-600 font-bold rounded-2xl border border-red-100 active:scale-95 transition-all"
         >
