@@ -1,125 +1,103 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Plus } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
-import { ROUTES_MOCK } from '@/constants/mockData';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext'; // Importando seu hook de Auth
-import CreateActionMenu from '@/components/CreateActionMenu'; // O novo componente que vamos criar
+import { useEffect, useState } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, query, limit, getDocs, where } from 'firebase/firestore';
+import RouteCard from '@/components/RouteCard'; // Aquele que criamos com as fotos empilhadas
+import { MapPin, Search } from 'lucide-react';
 
-export default function ExplorarPage() {
-  const [busca, setBusca] = useState('');
+export default function HomePage() {
+  const [rotasProximas, setRotasProximas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
 
-  const bairros = ["Mooca", "Pinheiros", "Vila Madalena", "Liberdade", "Lapa", "Santa Teresa"];
+  useEffect(() => {
+    // 1. Pegar localização do usuário
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    });
+  }, []);
+
+  useEffect(() => {
+    async function fetchRotas() {
+      setLoading(true);
+      try {
+        // Para o TCC, vamos simular a proximidade filtrando por "status: publica"
+        // Em um sistema real, usaríamos geofire-common para filtrar por KM
+        const q = query(
+          collection(db, 'routes'), 
+          limit(10) // Pegamos as 10 mais recentes/relevantes
+        );
+
+        const snap = await getDocs(q);
+        const logicRotas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        setRotasProximas(logicRotas);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchRotas();
+  }, [userLocation]); // Re-executa se a localização mudar
 
   return (
-    <>
-      <main className="flex flex-col min-h-screen bg-white pb-24">
-        {/* Header com botão Criar */}
-        <header className="p-6 pb-2">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-orange-600 font-bold text-sm uppercase tracking-wider mb-1">Roteiro</h1>
-              <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                O que explorar hoje? 🗺️
-              </h2>
-            </div>
-
-          </div>
-        </header>
-
-        {/* Barra de Busca Estilizada */}
-        <div className="relative mb-8">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
+    <main className="min-h-screen bg-white pb-24">
+      {/* Header com Busca (Igual à Imagem 3) */}
+      <header className="px-6 pt-12 pb-6">
+        <span className="text-orange-600 font-black uppercase tracking-widest text-[10px]">Roteiro</span>
+        <h1 className="text-3xl font-black text-gray-900 italic mt-1">O que explorar hoje? 🗺️</h1>
+        
+        <div className="relative mt-6">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input 
+            type="text" 
             placeholder="Buscar bairro, cidade ou tipo..."
-            className="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
+            className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 font-medium text-sm focus:ring-2 focus:ring-orange-500"
           />
         </div>
+      </header>
 
-        {/* Bairros Populares (Pills) */}
-        <section className="mb-8">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-4">Bairros Populares</h3>
-          <div className="flex flex-wrap gap-2">
-            {bairros.map((bairro) => (
-              <button
-                key={bairro}
-                className="px-4 py-2 rounded-full border border-gray-100 text-xs font-bold text-gray-600 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-600 transition-all"
-              >
-                {bairro}
-              </button>
+      {/* Bairros Populares (Filtros horizontais) */}
+      <section className="px-6 mb-8">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Bairros Populares</p>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          {['Mooca', 'Pinheiros', 'Vila Madalena', 'Liberdade', 'Lapa'].map((bairro) => (
+            <button key={bairro} className="px-5 py-2.5 bg-gray-50 rounded-full text-sm font-bold text-gray-600 whitespace-nowrap border border-gray-100 shadow-sm active:bg-orange-600 active:text-white transition-all">
+              {bairro}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Listagem Real de Rotas */}
+      <section className="px-6">
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Rotas em Destaque</p>
+          <span className="text-[10px] font-bold text-orange-600">{rotasProximas.length} rotas</span>
+        </div>
+
+        {loading ? (
+          <div className="space-y-4">
+            <div className="h-32 bg-gray-100 animate-pulse rounded-[32px]" />
+            <div className="h-32 bg-gray-100 animate-pulse rounded-[32px]" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {rotasProximas.map((rota) => (
+              <RouteCard 
+                key={rota.id}
+                title={rota.title}
+                stopsCount={rota.stops.length}
+                previewImages={[]} // Aqui depois puxamos as fotos das paradas
+                onPress={() => {/* Ir para detalhes da rota */}}
+              />
             ))}
           </div>
-        </section>
-
-        {/* Rotas em Destaque */}
-        <section>
-          <div className="flex justify-between items-end mb-6">
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">Rotas em Destaque</h3>
-            <span className="text-[10px] font-bold text-gray-300">{ROUTES_MOCK.length} rotas</span>
-          </div>
-
-          <div className="space-y-8">
-            {ROUTES_MOCK.map((rota) => (
-              <Link href={`/roteiro/${rota.id}`} key={rota.id} className="block group">
-                <div className="relative">
-                  {/* Ícone flutuante (Pizza no caso da Mooca) */}
-                  <div className="absolute -top-4 -left-2 z-10 text-3xl bg-white w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-gray-50 group-hover:scale-110 transition-transform">
-                    🍕
-                  </div>
-
-                  {/* Botão de Favorito */}
-                  <button className="absolute top-2 right-2 z-10 p-2 bg-white/80 backdrop-blur-md rounded-full shadow-sm">
-                    <div className="w-4 h-4 border-2 border-gray-200 rounded-full" /> {/* Simulando o círculo do Figma */}
-                  </button>
-
-                  {/* Card de Conteúdo */}
-                  <div className="bg-orange-50/30 rounded-[32px] p-6 pt-10 border border-orange-100/50">
-                    <div className="flex gap-2 mb-3">
-                      {rota.tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="text-[9px] font-black tracking-widest text-orange-400">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <h4 className="text-xl font-black text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
-                      {rota.title}
-                    </h4>
-
-                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-6">
-                      {rota.description}
-                    </p>
-
-                    <div className="flex items-center justify-between text-[10px] font-black text-gray-400 uppercase tracking-wider">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden relative">
-                          {/* Avatar do Autor */}
-                          <div className="bg-orange-200 w-full h-full flex items-center justify-center text-orange-600">
-                            {rota.author[0]}
-                          </div>
-                        </div>
-                        <span>Por {rota.author}</span>
-                      </div>
-                      <div className="flex gap-4">
-                        <span>⏱️ ~{rota.duration}</span>
-                        <span>📍 {rota.stopsCount} paradas</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-      </main>
-      
-    </>
+        )}
+      </section>
+    </main>
   );
 }
