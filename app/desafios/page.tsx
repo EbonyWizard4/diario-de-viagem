@@ -9,7 +9,11 @@ import { MapPin, Search } from 'lucide-react';
 export default function HomePage() {
   const [rotasProximas, setRotasProximas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
+
+  const [busca, setBusca] = useState('');
+
+  const bairros = ["Mooca", "Pinheiros", "Vila Madalena", "Liberdade", "Lapa", "Santa Teresa"];
 
   useEffect(() => {
     // 1. Pegar localização do usuário
@@ -25,13 +29,13 @@ export default function HomePage() {
         // Para o TCC, vamos simular a proximidade filtrando por "status: publica"
         // Em um sistema real, usaríamos geofire-common para filtrar por KM
         const q = query(
-          collection(db, 'routes'), 
+          collection(db, 'routes'),
           limit(10) // Pegamos as 10 mais recentes/relevantes
         );
 
         const snap = await getDocs(q);
         const logicRotas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
+
         setRotasProximas(logicRotas);
       } catch (e) {
         console.error(e);
@@ -44,26 +48,35 @@ export default function HomePage() {
   }, [userLocation]); // Re-executa se a localização mudar
 
   return (
-    <main className="min-h-screen bg-white pb-24">
+    <main className="flex flex-col min-h-screen bg-white pb-24">
       {/* Header com Busca (Igual à Imagem 3) */}
-      <header className="px-6 pt-12 pb-6">
-        <span className="text-orange-600 font-black uppercase tracking-widest text-[10px]">Roteiro</span>
-        <h1 className="text-3xl font-black text-gray-900 italic mt-1">O que explorar hoje? 🗺️</h1>
-        
-        <div className="relative mt-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input 
-            type="text" 
-            placeholder="Buscar bairro, cidade ou tipo..."
-            className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 font-medium text-sm focus:ring-2 focus:ring-orange-500"
-          />
+      <header className="p-6 pb-2">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-orange-600 font-bold text-sm uppercase tracking-wider mb-1">Roteiro</h1>
+            <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+              O que explorar hoje? 🗺️
+            </h2>
+          </div>
         </div>
       </header>
 
+        {/* Barra de Busca Estilizada */}
+        <div className="relative mb-8 px-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Buscar bairro, cidade ou tipo..."
+            className="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+
       {/* Bairros Populares (Filtros horizontais) */}
-      <section className="px-6 mb-8">
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Bairros Populares</p>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+      <section className="mb-8 px-1">
+        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-4">Bairros Populares</h3>
+        <div className="flex flex-wrap gap-2">
           {['Mooca', 'Pinheiros', 'Vila Madalena', 'Liberdade', 'Lapa'].map((bairro) => (
             <button key={bairro} className="px-5 py-2.5 bg-gray-50 rounded-full text-sm font-bold text-gray-600 whitespace-nowrap border border-gray-100 shadow-sm active:bg-orange-600 active:text-white transition-all">
               {bairro}
@@ -73,26 +86,25 @@ export default function HomePage() {
       </section>
 
       {/* Listagem Real de Rotas */}
-      <section className="px-6">
-        <div className="flex justify-between items-center mb-4">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Rotas em Destaque</p>
-          <span className="text-[10px] font-bold text-orange-600">{rotasProximas.length} rotas</span>
+      <section className="px-2">
+        <div className="flex justify-between items-end mb-6">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">Rotas em Destaque</h3>
+          <span className="text-[10px] font-bold text-gray-300">{rotasProximas.length} rotas</span>
         </div>
 
         {loading ? (
-          <div className="space-y-4">
-            <div className="h-32 bg-gray-100 animate-pulse rounded-[32px]" />
-            <div className="h-32 bg-gray-100 animate-pulse rounded-[32px]" />
+          <div className="space-y-8">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-64 bg-gray-50 animate-pulse rounded-[40px]" />
+            ))}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {rotasProximas.map((rota) => (
-              <RouteCard 
+              <RouteCard
                 key={rota.id}
-                title={rota.title}
-                stopsCount={rota.stops.length}
-                previewImages={[]} // Aqui depois puxamos as fotos das paradas
-                onPress={() => {/* Ir para detalhes da rota */}}
+                rota={rota} // Passa o objeto completo como o componente espera
+                onPress={() => console.log("Abrir rota:", rota.id)}
               />
             ))}
           </div>
