@@ -12,6 +12,7 @@ export default function HomePage() {
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [busca, setBusca] = useState('');
 
+  // --- LÓGICA DE LOCALIZAÇÃO ---
   useEffect(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
       setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
@@ -57,6 +58,7 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-col min-h-screen bg-white pb-24">
+      {/* Cabeçalho */}
       <header className="p-6 pb-2">
         <div className="flex justify-between items-start mb-4">
           <div>
