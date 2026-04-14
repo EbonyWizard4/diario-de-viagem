@@ -12,6 +12,7 @@ import { signInWithPopup } from "firebase/auth";
 import { db, auth, googleProvider } from "@/lib/firebase";
 import { collection, query, where, orderBy, onSnapshot, } from 'firebase/firestore';
 import VisitCard from '@/components/VisitCard';
+import RouteCard from '@/components/RouteCard';
 
 export default function PerfilPage() {
   const favoritos = ROUTES_MOCK.slice(0, 2);
@@ -265,51 +266,21 @@ export default function PerfilPage() {
 
           {/* --- CONTEÚDO: ROTAS --- */}
           {activeTab === 'rotas' && (
-            <>
+            <div className="px-6"> {/* Garanta que tenha o padding lateral aqui */}
               {rotas.length > 0 ? (
                 rotas.map((rota) => (
-                  <div key={rota.id} className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100 mb-6">
-                    {/* Header do Card de Rota similar ao VisitCard */}
-                    <div className="h-48 bg-orange-50 relative flex items-center justify-center overflow-hidden">
-                      <Map size={48} className="text-orange-200 absolute z-0" />
-                      <div className="absolute inset-0 bg-black/5" />
-                      <div className="absolute top-6 left-6 flex gap-1">
-                        {/* Badge de Duração */}
-                        <span className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-black uppercase text-orange-600">
-                          {rota.duration?.value || '0'} {rota.duration?.unit || 'Tempo'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="p-8">
-                      <span className="text-[10px] font-black text-orange-600 uppercase italic tracking-widest">
-                        Roteiro • {rota.stops.length} Paradas
-                      </span>
-                      <h3 className="text-2xl font-black text-gray-900 uppercase italic mt-1 leading-tight">
-                        {rota.title}
-                      </h3>
-                      <p className="text-gray-500 text-sm font-medium mt-3 line-clamp-2">
-                        "{rota.description}"
-                      </p>
-
-                      <div className="mt-6 pt-6 border-t border-gray-100 flex justify-between items-center">
-                        <div className="flex items-center gap-2 text-gray-400 font-bold text-xs">
-                          <DollarSign size={14} className="text-orange-500" />
-                          CUSTO {rota.cost?.toUpperCase() || 'Não informado'}
-                        </div>
-                        <button className="p-3 bg-gray-900 text-white rounded-2xl">
-                          <ChevronRight size={20} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <RouteCard
+                    key={rota.id}
+                    rota={rota}
+                    onPress={() => console.log('Abrir rota:', rota.id)}
+                  />
                 ))
               ) : (
                 <div className="text-center py-20 text-gray-400 italic">
                   Você ainda não criou nenhum roteiro.
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </section>
