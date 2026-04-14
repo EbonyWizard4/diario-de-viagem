@@ -6,6 +6,25 @@ import { db, auth } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Check, Map, X, MapPin, Clock, DollarSign, AlignLeft } from 'lucide-react';
 
+// Função auxiliar para buscar o bairro via OpenStreetMap
+async function fetchBairroFromCoords(lat: number, lng: number): Promise<string> {
+    try {
+        // O Nominatim pede um User-Agent para evitar bloqueios (pode ser o nome do seu app)
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+            { headers: { 'Accept-Language': 'pt-BR' } }
+        );
+        const data = await response.json();
+
+        // O bairro pode vir em diferentes campos dependendo da região
+        const address = data.address;
+        return address.suburb || address.neighbourhood || address.city_district || address.town || "Bairro não identificado";
+    } catch (error) {
+        console.error("Erro no Geocoding:", error);
+        return "Localização Genérica";
+    }
+}
+
 export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], onSuccess: () => void }) {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [routeName, setRouteName] = useState('');
@@ -33,10 +52,23 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
 
         setIsSaving(true);
         try {
+            // 🔍 LOGICA DE LOCALIZAÇÃO AUTOMÁTICA
+            // Pegamos os dados da primeira visita selecionada para definir o bairro da rota
+            const primeiraVisita = visitas.find(v => v.id === selectedIds[0]);
+            let bairroAutomatico = "São Paulo"; // Fallback
+
+            if (primeiraVisita?.latitude && primeiraVisita?.longitude) {
+                bairroAutomatico = await fetchBairroFromCoords(
+                    primeiraVisita.latitude,
+                    primeiraVisita.longitude
+                );
+            }
+
             await addDoc(collection(db, 'routes'), {
                 userId: auth.currentUser?.uid,
                 title: routeName,
                 description,
+                bairro: bairroAutomatico, // <--- SALVANDO O BAIRRO AQUI
                 duration: {
                     value: Number(timeValue),
                     unit: timeUnit
@@ -46,10 +78,8 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
                 timestamp: serverTimestamp(),
             });
 
-            // --- LOGICA DE SUCESSO ---
             setIsSuccess(true);
 
-            // Espera 2 segundos para o usuário ver a mensagem e depois fecha
             setTimeout(() => {
                 onSuccess();
                 setIsSuccess(false);
