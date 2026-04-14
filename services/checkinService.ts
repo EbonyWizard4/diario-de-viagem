@@ -1,10 +1,14 @@
 // src/services/checkinService.ts
+
 import { db } from '@/lib/firebase';
 import {
   collection,
   addDoc,
   serverTimestamp,
-  GeoPoint // <--- ADICIONE ESTE IMPORT AQUI
+  GeoPoint,
+  doc,
+  updateDoc,
+  increment // <--- Use o increment para somar XP com segurança
 } from 'firebase/firestore';
 
 export const registrarVisita = async (
@@ -12,17 +16,33 @@ export const registrarVisita = async (
   placeName: string,
   rating: number,
   comment: string,
-  location: GeoPoint | null, // Novo campo
-  photoUrl: string = "" // <--- Garante que seja uma string, mesmo que vazia
+  location: GeoPoint | null,
+  photoUrl: string = ""
 ) => {
-  return await addDoc(collection(db, 'checkins'), {
+  // 1. Registra o check-in normalmente
+  const docRef = await addDoc(collection(db, 'checkins'), {
     userId,
     placeName,
     rating,
     comment,
-    location, // Salva como GeoPoint no Firestore
-    photoUrl: photoUrl || "", // <--- Salva o link aqui ou uma string vazia se for null/undefined
+    location,
+    photoUrl: photoUrl || "",
     timestamp: serverTimestamp(),
     status: 'avulso'
   });
+
+  // 2. LÓGICA DE GAMIFICAÇÃO: Soma XP ao usuário
+  // Vamos dar 50 XP por cada visita registrada.
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      xp: increment(50), // O Firebase faz a soma atômica no servidor
+      totalCheckins: increment(1)
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar XP do usuário:", error);
+    // Nota: O check-in foi salvo, mas o XP falhou (ex: user doc não existe)
+  }
+
+  return docRef;
 };

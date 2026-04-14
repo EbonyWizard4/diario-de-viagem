@@ -1,9 +1,11 @@
+// desafios/page.tsx
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, limit, getDocs } from 'firebase/firestore';
-import RouteCard from '@/components/RouteCard'; 
+import RouteCard from '@/components/RouteCard';
 import { Search } from 'lucide-react';
 
 export default function HomePage() {
@@ -87,22 +89,20 @@ export default function HomePage() {
         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-4">Bairros Populares</h3>
         <div className="flex flex-wrap gap-2">
           {/* Botão para limpar filtro */}
-          <button 
+          <button
             onClick={() => setBusca('')}
-            className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all border ${
-              busca === '' ? 'bg-orange-600 text-white border-orange-600' : 'bg-gray-50 text-gray-600 border-gray-100'
-            }`}
+            className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all border ${busca === '' ? 'bg-orange-600 text-white border-orange-600' : 'bg-gray-50 text-gray-600 border-gray-100'
+              }`}
           >
             Todos
           </button>
-          
+
           {bairrosDinamicos.map((bairro) => (
-            <button 
-              key={bairro} 
+            <button
+              key={bairro}
               onClick={() => setBusca(bairro)}
-              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all border ${
-                busca === bairro ? 'bg-orange-600 text-white border-orange-600' : 'bg-gray-50 text-gray-600 border-gray-100'
-              }`}
+              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all border ${busca === bairro ? 'bg-orange-600 text-white border-orange-600' : 'bg-gray-50 text-gray-600 border-gray-100'
+                }`}
             >
               {bairro}
             </button>
@@ -130,7 +130,7 @@ export default function HomePage() {
                 <RouteCard
                   key={rota.id}
                   rota={rota}
-                  onPress={() => console.log("Abrir rota:", rota.id)}
+                  userLocation={userLocation} // 👈 Passando a posição atual do usuário
                 />
               ))
             ) : (
