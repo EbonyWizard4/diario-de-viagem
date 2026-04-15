@@ -7,22 +7,34 @@ import { MapPin, X, Map, ChevronLeft } from 'lucide-react'; // Adicionei Chevron
 import CheckinForm from './CheckinForm';
 import CameraCapture from './CameraCapture';
 import RouteCreator from './RouteCreator'; // O componente que criamos antes!
+import ModalVisitaCompleta from './modals/ModalCriarVisita';
 
 // Tipagem para os passos
 type Step = 'menu' | 'camera' | 'checkin' | 'route';
 
-export default function CreateActionMenu({ 
-  isOpen, 
+export default function CreateActionMenu({
+  isOpen,
   onClose,
   visitas // Recebemos as visitas do componente pai (ex: Perfil ou Home)
-}: { 
-  isOpen: boolean, 
+}: {
+  isOpen: boolean,
   onClose: () => void,
-  visitas: any[] 
+  visitas: any[]
 }) {
-  
+
   const [step, setStep] = useState<Step>('menu');
   const [tempPhoto, setTempPhoto] = useState<Blob | null>(null);
+
+  // Dentro do seu CreateActionMenu original:
+  const [isVisitaModalOpen, setIsVisitaModalOpen] = useState(false);
+
+
+
+
+
+
+
+
 
   useEffect(() => {
     if (!isOpen) {
@@ -54,7 +66,7 @@ export default function CreateActionMenu({
           >
             {/* BOTÃO VOLTAR (Aparece em qualquer step que não seja o menu) */}
             {step !== 'menu' && (
-              <button 
+              <button
                 onClick={() => setStep('menu')}
                 className="absolute top-8 left-8 p-2 bg-gray-50 text-gray-400 rounded-full hover:bg-gray-100 transition-colors"
               >
@@ -70,9 +82,10 @@ export default function CreateActionMenu({
                   <button onClick={onClose} className="p-2 bg-gray-100 rounded-full text-gray-400"><X size={20} /></button>
                 </div>
 
+                {/* Botão de Visita */}
                 <div className="grid grid-cols-2 gap-4">
                   <button
-                    onClick={() => setStep('camera')}
+                    onClick={() => setIsVisitaModalOpen(true)}
                     className="flex flex-col items-center gap-3 p-6 bg-orange-50 rounded-[32px] border-2 border-transparent hover:border-orange-200 transition-all active:scale-95"
                   >
                     <div className="w-14 h-14 bg-orange-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
@@ -81,7 +94,7 @@ export default function CreateActionMenu({
                     <span className="font-bold text-sm text-orange-900">Visita</span>
                   </button>
 
-                  <button 
+                  <button
                     onClick={() => setStep('route')} // AGORA HABILITADO
                     className="flex flex-col items-center gap-3 p-6 bg-blue-50 rounded-[32px] border-2 border-transparent hover:border-blue-200 transition-all active:scale-95"
                   >
@@ -96,7 +109,7 @@ export default function CreateActionMenu({
 
             {/* --- PASSO 2: CÂMERA --- */}
             {step === 'camera' && (
-              <CameraCapture 
+              <CameraCapture
                 onCancel={() => setStep('menu')}
                 onCapture={(blob) => {
                   setTempPhoto(blob);
@@ -117,7 +130,7 @@ export default function CreateActionMenu({
             {/* --- NOVO PASSO 4: CRIADOR DE ROTAS --- */}
             {step === 'route' && (
               <div className="pt-4">
-                <RouteCreator 
+                <RouteCreator
                   visitas={visitas} // Passamos o array que vem do Perfil
                   onSuccess={() => onClose()}
                 />
@@ -126,6 +139,11 @@ export default function CreateActionMenu({
           </motion.div>
         </>
       )}
+      {/* Adicione o modal aqui no final */}
+      <ModalVisitaCompleta
+        isOpen={isVisitaModalOpen}
+        onClose={() => setIsVisitaModalOpen(false)}
+      />
     </AnimatePresence>
   );
 }

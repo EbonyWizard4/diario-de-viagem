@@ -272,7 +272,6 @@ export default function PerfilPage() {
                   <RouteCard
                     key={rota.id}
                     rota={rota}
-                    onPress={() => console.log('Abrir rota:', rota.id)}
                   />
                 ))
               ) : (

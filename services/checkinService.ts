@@ -8,7 +8,7 @@ import {
   GeoPoint,
   doc,
   updateDoc,
-  increment // <--- Use o increment para somar XP com segurança
+  increment 
 } from 'firebase/firestore';
 
 export const registrarVisita = async (
