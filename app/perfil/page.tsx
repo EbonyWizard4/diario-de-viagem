@@ -10,9 +10,10 @@ import Link from 'next/link';
 // Exemplo de função de Login para usar no componente
 import { signInWithPopup } from "firebase/auth";
 import { db, auth, googleProvider } from "@/lib/firebase";
-import { collection, query, where, orderBy, onSnapshot, } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, } from 'firebase/firestore';
 import VisitCard from '@/components/VisitCard';
 import RouteCard from '@/components/RouteCard';
+import { getLevelInfo } from '@/services/gamificationService';
 
 export default function PerfilPage() {
   const favoritos = ROUTES_MOCK.slice(0, 2);
@@ -28,6 +29,24 @@ export default function PerfilPage() {
   const [activeTab, setActiveTab] = useState<'visitas' | 'rotas'>('visitas'); // Estado para controlar a aba ativa
   const [rotas, setRotas] = useState<any[]>([]); // Estado para as rotas do usuário
 
+
+
+  // ... dentro do componente PerfilPage
+  const [dadosUsuario, setDadosUsuario] = useState<any>(null);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    // Escuta o XP em tempo real
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+      if (doc.exists()) setDadosUsuario(doc.data());
+    });
+
+    return () => unsub();
+  }, [user]);
+
+  // Calculamos o nível com base no XP real do banco
+  const { level } = getLevelInfo(dadosUsuario?.xp || 0);
   // Lógica para as 3 melhores e mais recentes
   // Primeiro, ordenamos por nota (descendente) e depois por data (que já vem do Firebase)
   const visitasExibidas = exibirTodos
@@ -109,13 +128,13 @@ export default function PerfilPage() {
   // 3. Se chegou aqui, temos usuário e podemos renderizar a página principal
   return (
     <main className="flex flex-col min-h-screen bg-gray-50 pb-24">
-      {/* Header do Perfil */}
+      {/* Header do Perfil (Layout Original Mantido) */}
       <header className="bg-white px-6 pt-12 pb-8 rounded-b-[40px] shadow-sm">
         <div className="flex justify-between items-start mb-6">
           <div className="relative">
             <div className="relative w-24 h-24 rounded-3xl bg-orange-100 overflow-hidden border-4 border-white shadow-md">
               {user.photoURL ? (
-                <Image src={user.photoURL} alt={user.displayName || ""} fill className="rounded-3xl border-4 border-white shadow-md object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+                <Image src={user.photoURL} alt={user.displayName || ""} fill className="object-cover" />
               ) : (
                 <div className="w-full h-full rounded-3xl bg-orange-100 flex items-center justify-center text-3xl">👤</div>
               )}
@@ -125,11 +144,14 @@ export default function PerfilPage() {
             </button>
           </div>
 
+          {/* VALORES DINÂMICOS AQUI */}
           <div className="flex flex-col items-end">
             <span className="bg-orange-50 text-orange-600 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
-              Nível 5
+              Nível {level}
             </span>
-            <p className="text-xs text-gray-400 mt-1 font-bold">1.250 XP</p>
+            <p className="text-xs text-gray-400 mt-1 font-bold">
+              {dadosUsuario?.xp || 0} XP
+            </p>
           </div>
         </div>
 
@@ -146,15 +168,15 @@ export default function PerfilPage() {
         </button>
       </header>
 
-      {/* Grid de Stats Rápidos */}
+      {/* Grid de Stats Rápidos (Valores Dinâmicos) */}
       <section className="grid grid-cols-2 gap-4 px-6 -mt-6">
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Roteiros</p>
-          <p className="text-xl font-black text-gray-900">12</p>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Meus Roteiros</p>
+          <p className="text-xl font-black text-gray-900">{rotas.length}</p>
         </div>
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Medalhas</p>
-          <p className="text-xl font-black text-gray-900">4</p>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Visitas</p>
+          <p className="text-xl font-black text-gray-900">{visitas.length}</p>
         </div>
       </section>
 
