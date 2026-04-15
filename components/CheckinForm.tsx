@@ -9,16 +9,18 @@ import { GeoPoint } from 'firebase/firestore'; // Importe o tipo do Firebase
 import { AnimatePresence } from 'framer-motion';
 import SuccessFeedback from './SuccessFeedback'; // Importe o componente de feedback
 
-// src/components/CheckinForm.tsx
-
-// Adicione isso aqui em cima:
 interface CheckinFormProps {
-    onBack: () => void;    // Uma função que não recebe nada e não retorna nada
-    onSuccess: () => void; // Outra função que não recebe nada e não retorna nada
-    photo: Blob | null; // Adicione esta linha!
+  photo: Blob | null;
+  onBack: () => void;
+  onSuccess: () => void;
+  // 📍 ADICIONE ESTA LINHA:
+  initialData?: {
+    placeName?: string;
+    location?: any;
+  };
 }
 
-export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormProps) {
+export default function CheckinForm({ onBack, onSuccess, photo, initialData }: CheckinFormProps) {
     const { user } = useAuth();
     const [local, setLocal] = useState('');
     const [nota, setNota] = useState(5);
@@ -31,6 +33,9 @@ export default function CheckinForm({ onBack, onSuccess, photo }: CheckinFormPro
     // Novo estado para a localização
     const [coordenadas, setCoordenadas] = useState<{ lat: number, lng: number } | null>(null);
     const [buscandoGps, setBuscandoGps] = useState(false);
+
+    const [placeName, setPlaceName] = useState(initialData?.placeName || '');
+    const [location, setLocation] = useState(initialData?.location || null);
 
     // Efeito para buscar a localização assim que o form abrir
     useEffect(() => {
