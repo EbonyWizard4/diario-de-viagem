@@ -7,8 +7,10 @@ import { calculateDistance } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Check, MapPin, Camera, Star } from 'lucide-react';
-import { registerDailyCheckin } from '@/services/gamificationService';
 import ModalVisitaCompleta from './modals/ModalCriarVisita';
+
+import { registerDailyCheckin, checkAndGrantBadges } from '@/services/gamificationService'; // Adicione o checkAndGrantBadges
+import { useAuth } from '@/context/AuthContext'; // Precisamos do user logado
 
 interface BotaoProps {
     stop: any;
@@ -17,13 +19,40 @@ interface BotaoProps {
 }
 
 export default function BotaoCheckinParada({ stop, userLocation, userId }: BotaoProps) {
+const { user } = useAuth(); // Pega o usuário do contexto
     const [status, setStatus] = useState<'longe' | 'perto' | 'concluido' | 'loading'>('loading');
     const [distanciaTexto, setDistanciaTexto] = useState('');
     const [showModal, setShowModal] = useState(false);
-
-    // Dentro do BotaoCheckinParada
     const [showFullVisitModal, setShowFullVisitModal] = useState(false);
 
+    // ✅ REMOVI A FUNÇÃO handleCheckin QUE ESTAVA SOLTA AQUI
+
+    const executarCheckinSimples = async () => {
+        try {
+            setStatus('loading');
+
+            // 1. Registra o check-in e ganha XP (passando a categoria da parada)
+            // Aqui usamos stop.category que deve vir do seu banco
+            await registerDailyCheckin(userId, stop.id, stop.category || 'geral');
+
+            // 2. Verifica se o usuário ganhou badges novos após esse check-in
+            const novasBadges = await checkAndGrantBadges(userId);
+
+            setStatus('concluido');
+            setShowModal(false);
+
+            if (novasBadges && novasBadges.length > 0) {
+                alert(`🏆 INCRÍVEL! Você desbloqueou: ${novasBadges.join(', ')}`);
+            } else {
+                alert("🎉 +50 XP! Check-in realizado com sucesso!");
+            }
+            
+        } catch (error) {
+            console.error("Erro ao processar gamificação:", error);
+            alert("Ops! Tivemos um problema ao computar seus pontos.");
+            setStatus('perto');
+        }
+    };
 
     // 1. Verificar se já fez check-in hoje ao carregar
     useEffect(() => {
@@ -55,22 +84,6 @@ export default function BotaoCheckinParada({ stop, userLocation, userId }: Botao
         }
     };
 
-    const executarCheckinSimples = async () => {
-        try {
-            setStatus('loading');
-
-            // Chama o serviço que criamos acima
-            await registerDailyCheckin(userId, stop.id);
-
-            setStatus('concluido');
-            setShowModal(false);
-            alert("🎉 +50 XP! Check-in realizado com sucesso!");
-        } catch (error) {
-            console.error("Erro ao processar gamificação:", error);
-            alert("Ops! Tivemos um problema ao computar seus pontos.");
-            setStatus('perto');
-        }
-    };
 
     // Confirmação da visita (após check-in simples ou criação de visita completa)
     if (status === 'concluido') {

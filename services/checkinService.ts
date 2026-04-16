@@ -7,9 +7,45 @@ import {
   serverTimestamp,
   GeoPoint,
   doc,
+  setDoc,
+  deleteDoc,
+  getDoc,
   updateDoc,
-  increment 
+  increment
 } from 'firebase/firestore';
+
+
+/**
+ * Alterna o estado de favorito de um roteiro para o usuário
+ * @param userId ID do usuário logado
+ * @param routeId ID do roteiro que ele quer favoritar
+ */
+export const toggleFavorite = async (userId: string, routeId: string) => {
+  const favoriteRef = doc(db, 'users', userId, 'favorites', routeId);
+  const favoriteDoc = await getDoc(favoriteRef);
+
+  if (favoriteDoc.exists()) {
+    // Se já existe, o usuário clicou para remover
+    await deleteDoc(favoriteRef);
+    return false; // Retorna false para indicar que não é mais favorito
+  } else {
+    // Se não existe, vamos adicionar
+    await setDoc(favoriteRef, {
+      routeId,
+      addedAt: serverTimestamp(),
+    });
+    return true; // Retorna true para indicar que agora é favorito
+  }
+};
+
+/**
+ * Verifica se um roteiro específico é favorito do usuário
+ */
+export const isRouteFavorite = async (userId: string, routeId: string) => {
+  const favoriteRef = doc(db, 'users', userId, 'favorites', routeId);
+  const favoriteDoc = await getDoc(favoriteRef);
+  return favoriteDoc.exists();
+};
 
 export const registrarVisita = async (
   userId: string,

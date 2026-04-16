@@ -1,15 +1,29 @@
 // src/services/gamificationService.ts
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, increment, setDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  doc, 
+  updateDoc, 
+  increment, 
+  setDoc, 
+  serverTimestamp, 
+  getDoc, 
+  collection, 
+  query, 
+  where, 
+  getDocs,
+  arrayUnion 
+} from 'firebase/firestore';
 
 export const XP_VALUES = {
-  CHECKIN_AVULSO: 50,    // O que chamamos de "Check-in Rápido" no modal
+  CHECKIN_AVULSO: 50,
   COMPLETAR_ROTA: 200,
   CRIAR_ROTA: 150,
   AVALIAR_LOCAL: 20
 };
 
-// Função base para premiar XP (já existente)
+/**
+ * Premia XP e estatísticas
+ */
 export const awardXP = async (userId: string, type: keyof typeof XP_VALUES) => {
   const points = XP_VALUES[type];
   const userRef = doc(db, 'users', userId);
@@ -21,30 +35,87 @@ export const awardXP = async (userId: string, type: keyof typeof XP_VALUES) => {
 };
 
 /**
- * Registra o check-in diário e concede XP
- * @param stopId ID da parada (o __name__ do documento no Firestore)
+ * Registra o check-in diário e verifica conquistas
  */
-export const registerDailyCheckin = async (userId: string, stopId: string) => {
+export const registerDailyCheckin = async (userId: string, stopId: string, category?: string) => {
   const hoje = new Date().toISOString().split('T')[0];
-  // Criamos um ID único para o dia: usuário_parada_data
   const checkinRef = doc(db, 'users', userId, 'checkins_diarios', `${stopId}_${hoje}`);
 
-  // 1. Salva o registro para bloquear o botão amanhã
+  // 1. Salva o registro (Evita duplicidade no mesmo dia)
   await setDoc(checkinRef, {
     stopId,
+    category: category || 'geral',
     timestamp: serverTimestamp(),
     type: 'QUICK_CHECKIN'
   });
 
-  // 2. Concede os pontos usando a função que já temos
+  // 2. Concede XP
   await awardXP(userId, 'CHECKIN_AVULSO');
+
+  // 3. Verifica se o usuário ganhou novos Triunfos
+  return await checkAndGrantBadges(userId);
 };
 
+/**
+ * Lógica de Triunfos (Badges) baseada em histórico
+ */
+export const checkAndGrantBadges = async (userId: string) => {
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  
+  if (!userSnap.exists()) return null;
+
+  const userData = userSnap.data();
+  const badgesAtuais = userData.badges || [];
+
+  // Busca histórico de check-ins para validar metas
+  const q = query(collection(db, 'checkins'), where('userId', '==', userId));
+  const querySnapshot = await getDocs(q);
+  const checkins = querySnapshot.docs.map(d => d.data());
+
+  const contagem = {
+    gastronomia: checkins.filter(c => c.category === 'gastronomia').length,
+    artes: checkins.filter(c => c.category === 'artes').length,
+    passeios: checkins.filter(c => c.category === 'passeios').length,
+    role: checkins.filter(c => {
+      // Regra do Rolê: Check-in entre 22h e 05h
+      if (!c.timestamp) return false;
+      const hora = c.timestamp.toDate().getHours();
+      return hora >= 22 || hora <= 5;
+    }).length
+  };
+
+  const novasBadges: string[] = [];
+
+  // Regras de Negócio para Conquistas
+  if (contagem.gastronomia >= 5 && !badgesAtuais.includes('gastronomia')) novasBadges.push('gastronomia');
+  if (contagem.artes >= 3 && !badgesAtuais.includes('artes')) novasBadges.push('artes');
+  if (contagem.passeios >= 3 && !badgesAtuais.includes('passeios')) novasBadges.push('passeios');
+  if (contagem.role >= 1 && !badgesAtuais.includes('role')) novasBadges.push('role');
+
+  if (novasBadges.length > 0) {
+    await updateDoc(userRef, {
+      badges: arrayUnion(...novasBadges)
+    });
+    return novasBadges; // Retorna para disparar feedback visual (ex: confete)
+  }
+
+  return null;
+};
+
+/**
+ * Cálculos de Nível e Progresso
+ */
 export const getLevelInfo = (xp: number) => {
   const XP_PER_LEVEL = 500;
   const level = Math.floor((xp || 0) / XP_PER_LEVEL) + 1;
   const xpInCurrentLevel = (xp || 0) % XP_PER_LEVEL;
   const progress = (xpInCurrentLevel / XP_PER_LEVEL) * 100;
   
-  return { level, progress, xpInCurrentLevel, nextLevelAt: XP_PER_LEVEL };
+  return { 
+    level, 
+    progress, 
+    xpInCurrentLevel, 
+    nextLevelAt: XP_PER_LEVEL 
+  };
 };

@@ -10,13 +10,13 @@ import Link from 'next/link';
 // Exemplo de função de Login para usar no componente
 import { signInWithPopup } from "firebase/auth";
 import { db, auth, googleProvider } from "@/lib/firebase";
-import { collection, query, where, orderBy, onSnapshot, doc, } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, getDocs, } from 'firebase/firestore';
 import VisitCard from '@/components/VisitCard';
 import RouteCard from '@/components/RouteCard';
 import { getLevelInfo } from '@/services/gamificationService';
+import ModalConquistas from '@/components/modals/ModalConquistas';
 
 export default function PerfilPage() {
-  const favoritos = ROUTES_MOCK.slice(0, 2);
 
   // 1. Pegamos o 'loading' do AuthContext
   const { user, loginComGoogle, logout, loading: authLoading } = useAuth();
@@ -29,10 +29,90 @@ export default function PerfilPage() {
   const [activeTab, setActiveTab] = useState<'visitas' | 'rotas'>('visitas'); // Estado para controlar a aba ativa
   const [rotas, setRotas] = useState<any[]>([]); // Estado para as rotas do usuário
 
+  // No topo da sua PerfilPage, adicione o estado para os favoritos
+  const [favoritos, setFavoritos] = useState<any[]>([]);
+  const [loadingFavoritos, setLoadingFavoritos] = useState(true);
 
+  // 1. Crie o estado (lá no topo com os outros states)
+  const [exibirTodosFavoritos, setExibirTodosFavoritos] = useState(false);
+
+  // 1. Adicione o estado do modal
+  const [modalConquistasAberto, setModalConquistasAberto] = useState(false);
+
+  // 2. Mock das conquistas possíveis (isso depois pode ir para um arquivo de constantes)
+  const CONQUISTAS_POSSIVEIS = [
+    { id: 'gastronomia', emoji: '🍕', titulo: 'Glutão Profissional', desc: 'Faça 5 check-ins em restaurantes.', meta: 5 },
+    { id: 'artes', emoji: '🎨', titulo: 'Crítico de Arte', desc: 'Visite 3 museus ou galerias.', meta: 3 },
+    { id: 'passeios', emoji: '🚲', titulo: 'Explorador Urbano', desc: 'Complete 3 roteiros de parques.', meta: 3 },
+    { id: 'role', emoji: '🏙️', titulo: 'Inimigo do Fim', desc: 'Faça um check-in após as 22h.', meta: 1 },
+  ];
+
+  // 2. Crie uma variável para filtrar o que será exibido
+  const favoritosExibidos = exibirTodosFavoritos
+    ? favoritos
+    : favoritos.slice(0, 3); // Pega apenas os 3 primeiros (mais recentes)
 
   // ... dentro do componente PerfilPage
   const [dadosUsuario, setDadosUsuario] = useState<any>(null);
+
+
+  // Lógica para as 3 melhores e mais recentes
+  // Primeiro, ordenamos por nota (descendente) e depois por data (que já vem do Firebase)
+
+  const visitasExibidas = exibirTodos
+    ? visitas
+    : [...visitas]
+      .sort((a, b) => b.rating - a.rating) // Prioriza nota maior
+      .slice(0, 3); // Pega apenas as 3 primeiras
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+      if (doc.exists()) setDadosUsuario(doc.data());
+    });
+    return () => unsub();
+  }, [user]);
+
+  // useEffect para buscar os favoritos do usuário
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    setLoadingFavoritos(true);
+
+    // Buscamos na subcoleção 'favorites' do usuário logado
+    const q = query(
+      collection(db, 'users', user.uid, 'favorites'),
+      orderBy('addedAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const favoriteIds = snapshot.docs.map(doc => doc.id);
+
+      if (favoriteIds.length === 0) {
+        setFavoritos([]);
+        setLoadingFavoritos(false);
+        return;
+      }
+
+      // Agora buscamos os dados completos desses roteiros na coleção 'routes'
+      // O Firestore tem um limite de 10 IDs por query 'in', o que costuma bastar para favoritos recentes
+      const routesQuery = query(
+        collection(db, 'routes'),
+        where('__name__', 'in', favoriteIds.slice(0, 10))
+      );
+
+      const routesSnap = await getDocs(routesQuery);
+      const routesData = routesSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      setFavoritos(routesData);
+      setLoadingFavoritos(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -44,16 +124,6 @@ export default function PerfilPage() {
 
     return () => unsub();
   }, [user]);
-
-  // Calculamos o nível com base no XP real do banco
-  const { level } = getLevelInfo(dadosUsuario?.xp || 0);
-  // Lógica para as 3 melhores e mais recentes
-  // Primeiro, ordenamos por nota (descendente) e depois por data (que já vem do Firebase)
-  const visitasExibidas = exibirTodos
-    ? visitas
-    : [...visitas]
-      .sort((a, b) => b.rating - a.rating) // Prioriza nota maior
-      .slice(0, 3); // Pega apenas as 3 primeiras
 
   useEffect(() => {
     // Se o Auth ainda está carregando ou se não tem usuário, não faz nada
@@ -96,8 +166,10 @@ export default function PerfilPage() {
     });
     return () => unsubscribe();
   }, [user, authLoading]);
-
-
+  
+  // Calculamos o nível com base no XP real do banco
+  const { level } = getLevelInfo(dadosUsuario?.xp || 0);
+  
   // 1. Enquanto o Firebase descobre se você está logado ou não
   if (authLoading) {
     return (
@@ -124,6 +196,8 @@ export default function PerfilPage() {
       </main>
     );
   }
+
+
 
   // 3. Se chegou aqui, temos usuário e podemos renderizar a página principal
   return (
@@ -180,48 +254,112 @@ export default function PerfilPage() {
         </div>
       </section>
 
-      {/* Seção de Conquistas */}
+      {/* Seção de Conquistas Atualizada */}
       <section className="px-6 mt-8">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-gray-900 flex items-center gap-2">
             <Award className="text-orange-600 w-5 h-5" /> Conquistas
           </h3>
-          <button className="text-xs font-bold text-orange-600">Ver todas</button>
+          {/* Botão que abre o modal */}
+          <button
+            onClick={() => setModalConquistasAberto(true)}
+            className="text-xs font-black text-orange-600 uppercase tracking-widest"
+          >
+            Ver todas
+          </button>
         </div>
+
         <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
-          {['🍕', '🎨', '🚲', '🏙️'].map((emoji, i) => (
-            <div key={i} className="min-w-[70px] aspect-square bg-white rounded-2xl flex items-center justify-center text-3xl shadow-sm border border-gray-100">
-              {emoji}
-            </div>
-          ))}
+          {CONQUISTAS_POSSIVEIS.map((conquista) => {
+            // Verifica se o ID da conquista está no array 'badges' do usuário no Firebase
+            const conquistada = dadosUsuario?.badges?.includes(conquista.id);
+
+            return (
+              <div
+                key={conquista.id}
+                className={`min-w-[75px] aspect-square rounded-2xl flex items-center justify-center text-3xl shadow-sm border transition-all ${conquistada ? 'bg-white border-orange-100' : 'bg-gray-100 border-transparent grayscale opacity-40'
+                  }`}
+              >
+                {conquista.emoji}
+              </div>
+            );
+          })}
         </div>
       </section>
 
+      {/* Modal (fora do fluxo principal) */}
+      <ModalConquistas
+        isOpen={modalConquistasAberto}
+        onClose={() => setModalConquistasAberto(false)}
+        conquistasUsuario={dadosUsuario?.badges || []}
+      />
       {/* Roteiros Favoritos */}
       <section className="px-6 mt-8">
-        <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-4">
-          <Heart className="text-red-500 w-5 h-5 fill-red-500" /> Meus Favoritos
-        </h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-bold text-gray-900 flex items-center gap-2">
+            <Heart className="text-red-500 w-5 h-5 fill-red-500" /> Meus Favoritos
+          </h3>
+
+          {/* O botão Ver Todos só aparece se houver mais de 3 favoritos */}
+          {favoritos.length > 3 && (
+            <button
+              onClick={() => setExibirTodosFavoritos(!exibirTodosFavoritos)}
+              className="text-[10px] font-black text-orange-600 uppercase tracking-widest hover:underline"
+            >
+              {exibirTodosFavoritos ? 'Ver menos' : 'Ver todos'}
+            </button>
+          )}
+        </div>
+
         <div className="space-y-4">
-          {favoritos.map((rota) => (
-            <Link href={`/roteiro/${rota.id}`} key={rota.id} className="flex bg-white p-3 rounded-2xl border border-gray-100 shadow-sm gap-4 active:scale-[0.98] transition-transform">
-              <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                <Image src={rota.imageUrl} alt={rota.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
-              </div>
-              <div className="flex flex-col justify-center overflow-hidden">
-                <h4 className="font-bold text-gray-900 text-sm truncate">{rota.title}</h4>
-                <p className="text-[10px] text-gray-400 font-medium">Por {rota.author}</p>
-                <div className="flex gap-2 mt-2">
-                  <span className="text-[8px] font-black text-orange-600 bg-orange-50 px-2 py-0.5 rounded uppercase">
-                    {rota.tags[0]}
-                  </span>
+          {loadingFavoritos ? (
+            <div className="h-24 bg-gray-100 rounded-2xl animate-pulse" />
+          ) : favoritos.length > 0 ? (
+            <>
+              {/* Renderizamos apenas os favoritos filtrados (3 ou todos) */}
+              {favoritosExibidos.map((rota) => (<Link
+                href={`/roteiro/${rota.id}`}
+                key={rota.id}
+                className="flex bg-white p-3 rounded-2xl border border-gray-100 shadow-sm gap-4 active:scale-[0.98] transition-transform"
+              >
+                <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                  {rota.thumbnail ? (
+                    <Image src={rota.thumbnail} alt={rota.title} fill className="object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-orange-50 text-orange-200">
+                      <Map size={24} />
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="flex items-center ml-auto">
-                <ChevronRight className="w-4 h-4 text-gray-300" />
-              </div>
-            </Link>
-          ))}
+                <div className="flex flex-col justify-center overflow-hidden">
+                  <h4 className="font-bold text-gray-900 text-sm truncate uppercase italic">
+                    {rota.title}
+                  </h4>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">
+                    Por {rota.authorName || 'Explorador'}
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    <span className="text-[8px] font-black text-orange-600 bg-orange-50 px-2 py-0.5 rounded uppercase tracking-tighter">
+                      {rota.category || 'Aventura'}
+                    </span>
+                    <span className="text-[8px] font-black text-gray-400 bg-gray-50 px-2 py-0.5 rounded uppercase">
+                      {rota.stops?.length || 0} paradas
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center ml-auto">
+                  <ChevronRight className="w-4 h-4 text-gray-200" />
+                </div>
+              </Link>
+              ))}
+            </ >
+          ) : (
+            <div className="bg-dashed border-2 border-dashed border-gray-100 rounded-2xl p-8 text-center">
+              <p className="text-xs text-gray-400 font-bold uppercase italic">
+                Nenhum roteiro favoritado ainda. <br /> Comece a explorar!
+              </p>
+            </div>
+          )}
         </div>
       </section>
 

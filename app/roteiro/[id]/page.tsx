@@ -10,87 +10,89 @@ import { ArrowLeft, Heart, Share2, Clock, MapPin, DollarSign, Map as MapIcon } f
 import VisitCard from '@/components/VisitCard';
 import BotaoCheckinParada from '@/components/BotaoCheckinParada';
 
+// 📍 IMPORTANTE: Importe o seu contexto de Auth e o serviço de checkin
+import { useAuth } from '@/context/AuthContext';
+import { isRouteFavorite, toggleFavorite } from '@/services/checkinService';
+
 export default function RoteiroDetalhes() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth(); // Pega o usuário real logado
 
   const [roteiro, setRoteiro] = useState<any>(null);
   const [paradas, setParadas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false);
 
-  // 📍 NOVO: Estado para armazenar a localização do usuário
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [checkinsConcluidosNoDia, setCheckinsConcluidosNoDia] = useState<string[]>([]);
-  const [userId, setUserId] = useState<string>("uV2"); // Mock por enquanto, ou pegue do seu Auth
+  
+  // Usamos o ID do usuário logado ou o mock se não houver ninguém
+  const userId = user?.uid || "uV2";
 
+  // 1. Verificar se é favorito ao carregar
+  useEffect(() => {
+    if (user && params.id) {
+      isRouteFavorite(user.uid, params.id as string).then(setIsFavorite);
+    }
+  }, [user, params.id]);
+
+  // 2. Função disparada pelo clique no coração
+  const handleToggleFavorite = async () => {
+    if (!user) return alert("Faça login para favoritar!");
+    const status = await toggleFavorite(user.uid, params.id as string);
+    setIsFavorite(status);
+  };
+
+  // Busca checkins do dia
   useEffect(() => {
     async function fetchCheckinsHoje() {
       if (!userId) return;
       const hoje = new Date().toISOString().split('T')[0];
-
-      // Busca na subcoleção que criamos para a gamificação
       const q = collection(db, 'users', userId, 'checkins_diarios');
       const snap = await getDocs(q);
-
-      // Filtra apenas os que são de hoje (ID formato: stopId_2026-04-15)
       const concluidos = snap.docs
         .filter(doc => doc.id.includes(hoje))
         .map(doc => doc.data().stopId);
-
       setCheckinsConcluidosNoDia(concluidos);
     }
     fetchCheckinsHoje();
   }, [userId]);
 
-  // 🛰️ NOVO: Efeito para monitorar o GPS em tempo real
+  // GPS em tempo real
   useEffect(() => {
     if (!navigator.geolocation) return;
-
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setUserLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude
-        });
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
       (err) => console.error("Erro ao obter GPS:", err),
-      { enableHighAccuracy: true } // Garante precisão para a gamificação
+      { enableHighAccuracy: true }
     );
-
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  // ... (mantenha seu useEffect de fetchDadosRoteiro aqui)
-
+  // Busca dados do roteiro
   useEffect(() => {
     async function fetchDadosRoteiro() {
       if (!params.id) return;
       setLoading(true);
-
       try {
-        // 1. Busca o documento da Rota
         const rotaDoc = await getDoc(doc(db, 'routes', params.id as string));
-
         if (rotaDoc.exists()) {
           const data = rotaDoc.data();
           setRoteiro({ id: rotaDoc.id, ...data });
 
-          // 2. Busca os detalhes de todos os check-ins (paradas) desta rota
-          // Usamos o campo 'stops' que contém o array de IDs
           if (data.stops && data.stops.length > 0) {
             const q = query(
               collection(db, 'checkins'),
-              where('__name__', 'in', data.stops) // Busca documentos pelos IDs do array
+              where('__name__', 'in', data.stops)
             );
-
             const snap = await getDocs(q);
             const docsMap = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-            // Reordenar para manter a sequência que o usuário escolheu no RouteCreator
             const orderedStops = data.stops.map((id: string) =>
               docsMap.find(doc => doc.id === id)
             ).filter(Boolean);
-
             setParadas(orderedStops);
           }
         }
@@ -100,7 +102,6 @@ export default function RoteiroDetalhes() {
         setLoading(false);
       }
     }
-
     fetchDadosRoteiro();
   }, [params.id]);
 
@@ -109,15 +110,9 @@ export default function RoteiroDetalhes() {
 
   return (
     <main className="flex flex-col min-h-screen bg-white pb-10">
-      {/* Header com a primeira foto do roteiro ou um fallback */}
       <header className="relative h-72 w-full bg-gray-900">
         {paradas[0]?.photoUrl ? (
-          <Image
-            src={paradas[0].photoUrl}
-            alt={roteiro.title}
-            fill
-            className="object-cover opacity-80"
-          />
+          <Image src={paradas[0].photoUrl} alt={roteiro.title} fill className="object-cover opacity-80" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-white/20">
             <MapIcon size={80} />
@@ -129,14 +124,21 @@ export default function RoteiroDetalhes() {
           <button onClick={() => router.back()} className="p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg active:scale-90 transition-all">
             <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
+          
           <div className="flex gap-2">
-            <button className="p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg"><Heart className="w-5 h-5 text-gray-400" /></button>
+            <button
+              onClick={handleToggleFavorite}
+              className="p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg active:scale-90 transition-all"
+            >
+              <Heart
+                className={`w-5 h-5 transition-colors ${isFavorite ? 'text-red-500 fill-red-500' : 'text-gray-400'}`}
+              />
+            </button>
             <button className="p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg"><Share2 className="w-5 h-5 text-gray-900" /></button>
           </div>
         </div>
       </header>
 
-      {/* Info Principal */}
       <section className="px-6 -mt-16 z-20 relative">
         <div className="bg-white/80 backdrop-blur-xl p-8 rounded-[40px] border border-white shadow-2xl">
           <span className="text-[10px] font-black text-orange-600 uppercase italic tracking-widest mb-1 block">
@@ -164,26 +166,17 @@ export default function RoteiroDetalhes() {
         </div>
       </section>
 
-      {/* Timeline das Paradas */}
       <section className="px-6 mt-10">
         <h3 className="text-[10px] font-black uppercase tracking-[3px] text-gray-400 mb-10">Linha do Tempo</h3>
-
         <div className="space-y-12 relative">
-          {/* Linha vertical estilizada */}
           <div className="absolute left-[19px] top-2 bottom-2 w-[4px] bg-gray-100 rounded-full" />
-
           {paradas.map((stop, index) => {
             const jaFezCheckin = checkinsConcluidosNoDia.includes(stop.id);
-
             return (
-
               <div key={stop.id} className="relative pl-14 mb-12">
-                {/* 1. Mantemos a estrutura da Timeline (Bolinha com número) */}
                 <div className="absolute left-0 top-0 w-10 h-10 rounded-2xl bg-gray-900 flex items-center justify-center z-10 shadow-lg border-4 border-white">
                   <span className="text-xs font-black text-white">{index + 1}</span>
                 </div>
-
-                {/* 2. O VisitCard entra aqui como o conteúdo do passo */}
                 <div className="group transition-all">
                   <VisitCard
                     placeName={stop.placeName}
@@ -191,15 +184,13 @@ export default function RoteiroDetalhes() {
                     rating={stop.rating}
                     photoUrl={stop.photoUrl}
                     date={stop.timestamp}
-                    isCompleted={jaFezCheckin} // 👈 A mágica acontece aqui!
+                    isCompleted={jaFezCheckin}
                   />
-
-                  {/* 3. Inserimos o Botão de Gamificação LOGO ABAIXO do Card */}
                   <div className="mt-4 px-2">
                     <BotaoCheckinParada
                       stop={stop}
                       userLocation={userLocation}
-                      userId={userId} // 👈 Importante para salvar o XP!
+                      userId={userId}
                     />
                   </div>
                 </div>
