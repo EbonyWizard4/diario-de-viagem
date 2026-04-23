@@ -1,125 +1,146 @@
+// desafios/page.tsx
+
 'use client';
 
-import { useState } from 'react';
-import { Search, Plus } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
-import { ROUTES_MOCK } from '@/constants/mockData';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext'; // Importando seu hook de Auth
-import CreateActionMenu from '@/components/CreateActionMenu'; // O novo componente que vamos criar
+import { useEffect, useState, useMemo } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, query, limit, getDocs } from 'firebase/firestore';
+import RouteCard from '@/components/RouteCard';
+import { Search } from 'lucide-react';
 
-export default function ExplorarPage() {
+export default function HomePage() {
+  const [rotasProximas, setRotasProximas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [busca, setBusca] = useState('');
 
-  const bairros = ["Mooca", "Pinheiros", "Vila Madalena", "Liberdade", "Lapa", "Santa Teresa"];
+  // --- LÓGICA DE LOCALIZAÇÃO ---
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    });
+  }, []);
+
+  useEffect(() => {
+    async function fetchRotas() {
+      setLoading(true);
+      try {
+        const q = query(collection(db, 'routes'), limit(20));
+        const snap = await getDocs(q);
+        const logicRotas = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setRotasProximas(logicRotas);
+      } catch (e) {
+        console.error("Erro ao buscar rotas:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchRotas();
+  }, [userLocation]);
+
+  // --- LÓGICA DINÂMICA: EXTRAIR BAIRROS ÚNICOS ---
+  const bairrosDinamicos = useMemo(() => {
+    const listaBairros = rotasProximas
+      .map(r => r.bairro)
+      .filter((b): b is string => !!b); // Remove nulos ou vazios
+    return Array.from(new Set(listaBairros)).sort(); // Remove duplicatas e ordena
+  }, [rotasProximas]);
+
+  // --- LÓGICA DE FILTRO ---
+  const rotasFiltradas = useMemo(() => {
+    return rotasProximas.filter(rota => {
+      const termo = busca.toLowerCase();
+      return (
+        rota.title?.toLowerCase().includes(termo) ||
+        rota.bairro?.toLowerCase().includes(termo) ||
+        rota.description?.toLowerCase().includes(termo)
+      );
+    });
+  }, [busca, rotasProximas]);
 
   return (
-    <>
-      <main className="flex flex-col min-h-screen bg-white pb-24">
-        {/* Header com botão Criar */}
-        <header className="p-6 pb-2">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-orange-600 font-bold text-sm uppercase tracking-wider mb-1">Roteiro</h1>
-              <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                O que explorar hoje? 🗺️
-              </h2>
-            </div>
-
+    <main className="flex flex-col min-h-screen bg-white pb-24">
+      {/* Cabeçalho */}
+      <header className="p-6 pb-2">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-orange-600 font-bold text-sm uppercase tracking-wider mb-1">Roteiro</h1>
+            <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+              O que explorar hoje? 🗺️
+            </h2>
           </div>
-        </header>
+        </div>
+      </header>
 
-        {/* Barra de Busca Estilizada */}
-        <div className="relative mb-8">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            placeholder="Buscar bairro, cidade ou tipo..."
-            className="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-          />
+      {/* Barra de Busca */}
+      <div className="relative mb-8 px-6">
+        <Search className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <input
+          type="text"
+          placeholder="Buscar bairro, cidade ou tipo..."
+          className="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+        />
+      </div>
+
+      {/* Bairros Dinâmicos (Vindos da Base) */}
+      <section className="mb-8 px-6">
+        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-4">Bairros Populares</h3>
+        <div className="flex flex-wrap gap-2">
+          {/* Botão para limpar filtro */}
+          <button
+            onClick={() => setBusca('')}
+            className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all border ${busca === '' ? 'bg-orange-600 text-white border-orange-600' : 'bg-gray-50 text-gray-600 border-gray-100'
+              }`}
+          >
+            Todos
+          </button>
+
+          {bairrosDinamicos.map((bairro) => (
+            <button
+              key={bairro}
+              onClick={() => setBusca(bairro)}
+              className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all border ${busca === bairro ? 'bg-orange-600 text-white border-orange-600' : 'bg-gray-50 text-gray-600 border-gray-100'
+                }`}
+            >
+              {bairro}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Listagem de Rotas */}
+      <section className="px-6">
+        <div className="flex justify-between items-end mb-6">
+          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">Rotas em Destaque</h3>
+          <span className="text-[10px] font-bold text-gray-300">{rotasFiltradas.length} encontradas</span>
         </div>
 
-        {/* Bairros Populares (Pills) */}
-        <section className="mb-8">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-4">Bairros Populares</h3>
-          <div className="flex flex-wrap gap-2">
-            {bairros.map((bairro) => (
-              <button
-                key={bairro}
-                className="px-4 py-2 rounded-full border border-gray-100 text-xs font-bold text-gray-600 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-600 transition-all"
-              >
-                {bairro}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Rotas em Destaque */}
-        <section>
-          <div className="flex justify-between items-end mb-6">
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">Rotas em Destaque</h3>
-            <span className="text-[10px] font-bold text-gray-300">{ROUTES_MOCK.length} rotas</span>
-          </div>
-
+        {loading ? (
           <div className="space-y-8">
-            {ROUTES_MOCK.map((rota) => (
-              <Link href={`/roteiro/${rota.id}`} key={rota.id} className="block group">
-                <div className="relative">
-                  {/* Ícone flutuante (Pizza no caso da Mooca) */}
-                  <div className="absolute -top-4 -left-2 z-10 text-3xl bg-white w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-gray-50 group-hover:scale-110 transition-transform">
-                    🍕
-                  </div>
-
-                  {/* Botão de Favorito */}
-                  <button className="absolute top-2 right-2 z-10 p-2 bg-white/80 backdrop-blur-md rounded-full shadow-sm">
-                    <div className="w-4 h-4 border-2 border-gray-200 rounded-full" /> {/* Simulando o círculo do Figma */}
-                  </button>
-
-                  {/* Card de Conteúdo */}
-                  <div className="bg-orange-50/30 rounded-[32px] p-6 pt-10 border border-orange-100/50">
-                    <div className="flex gap-2 mb-3">
-                      {rota.tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="text-[9px] font-black tracking-widest text-orange-400">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <h4 className="text-xl font-black text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
-                      {rota.title}
-                    </h4>
-
-                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-6">
-                      {rota.description}
-                    </p>
-
-                    <div className="flex items-center justify-between text-[10px] font-black text-gray-400 uppercase tracking-wider">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden relative">
-                          {/* Avatar do Autor */}
-                          <div className="bg-orange-200 w-full h-full flex items-center justify-center text-orange-600">
-                            {rota.author[0]}
-                          </div>
-                        </div>
-                        <span>Por {rota.author}</span>
-                      </div>
-                      <div className="flex gap-4">
-                        <span>⏱️ ~{rota.duration}</span>
-                        <span>📍 {rota.stopsCount} paradas</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Link>
+            {[1, 2].map((i) => (
+              <div key={i} className="h-64 bg-gray-50 animate-pulse rounded-[40px]" />
             ))}
           </div>
-        </section>
-
-      </main>
-      
-    </>
+        ) : (
+          <div className="space-y-6">
+            {rotasFiltradas.length > 0 ? (
+              rotasFiltradas.map((rota) => (
+                <RouteCard
+                  key={rota.id}
+                  rota={rota}
+                  userLocation={userLocation} // 👈 Passando a posição atual do usuário
+                />
+              ))
+            ) : (
+              <div className="text-center py-20 text-gray-400 italic">
+                Nenhum roteiro encontrado para "{busca}".
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }
