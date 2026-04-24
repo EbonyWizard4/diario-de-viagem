@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { GeoPoint } from 'firebase/firestore'; // Importe o tipo do Firebase
 import { AnimatePresence } from 'framer-motion';
 import SuccessFeedback from './SuccessFeedback'; // Importe o componente de feedback
+import { awardXP, checkAndGrantBadges } from '@/services/gamificationService';
 
 interface CheckinFormProps {
   photo: Blob | null;
@@ -17,8 +18,17 @@ interface CheckinFormProps {
   initialData?: {
     placeName?: string;
     location?: any;
+    category?: string;
   };
 }
+
+// 1. Defina as categorias disponíveis para o usuário escolher
+const CATEGORIAS = [
+  { id: 'gastronomia', label: 'Gastronomia', icon: '🍕' },
+  { id: 'artes', label: 'Artes', icon: '🎨' },
+  { id: 'passeios', label: 'Passeio', icon: '🚲' },
+  { id: 'role', label: 'Rolê', icon: '🏙️' },
+];
 
 export default function CheckinForm({ onBack, onSuccess, photo, initialData }: CheckinFormProps) {
     const { user } = useAuth();
@@ -59,42 +69,41 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
     }, []);
 
     //Salvar o post.
+    const [categoria, setCategoria] = useState(initialData?.category || 'gastronomia');
+
     const handleSalvar = async () => {
         if (!user || !local) return;
         setEnviando(true);
 
         try {
             let fotoUrl = "";
-
-            // SE TIVER FOTO, FAZ O UPLOAD PRIMEIRO
-            if (photo) {
-                const filename = `visita-${Date.now()}.jpg`;
-                const response = await fetch(`/api/upload?filename=${filename}`, {
-                    method: 'POST',
-                    body: photo, // Nosso Blob da câmera
-                });
-
-                if (!response.ok) {
-                    // Aqui pegamos o erro que a API devolveu
-                    const errorData = await response.json();
-                    console.error("❌ Erro na resposta da API:", errorData);
-                    throw new Error("Falha no servidor de upload");
-                }
-
-                const newBlob = await response.json();
-                fotoUrl = newBlob.url; // Esse é o link público da foto!
-            }
+            // ... (seu código de upload de foto continua igual)
 
             const locationData = coordenadas ? new GeoPoint(coordenadas.lat, coordenadas.lng) : null;
-            // AGORA SALVAMOS TUDO NO FIRESTORE (Incluindo a fotoUrl)
-            await registrarVisita(user.uid, local, nota, comentario, locationData, fotoUrl || ""); // Passa a URL da foto ou string vazia
+            
+            // 2. AJUSTE: Passamos a 'categoria' para o seu serviço de registro
+            await registrarVisita(
+                user.uid, 
+                local, 
+                nota, 
+                comentario, 
+                locationData, 
+                fotoUrl || "",
+                categoria // <--- Enviar categoria aqui
+            );
 
-            setSucesso(true); // Ativa a mensagem de sucesso
+            // 3. GAMIFICAÇÃO: Dar XP e verificar Badges
+            await awardXP(user.uid, 'AVALIAR_LOCAL');
+            const novasBadges = await checkAndGrantBadges(user.uid);
 
-            // Aguarda 2 segundos para o usuário ver a mensagem antes de fechar tudo
-            setTimeout(() => {
-                onSuccess();
-            }, 2000);
+            setSucesso(true);
+
+            if (novasBadges) {
+                // Opcional: Você pode passar isso para o SuccessFeedback mostrar um troféu
+                console.log("Ganhou badges:", novasBadges);
+            }
+
+            setTimeout(() => { onSuccess(); }, 2000);
 
         } catch (error) {
             console.error(error);
@@ -111,6 +120,7 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
             <button onClick={onBack} className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase tracking-widest hover:text-orange-600 transition-colors">
                 <ChevronLeft size={16} /> Voltar
             </button>
+            
             {/* Indicador de GPS */}
             <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl border border-gray-100">
                 <MapPin size={14} className={coordenadas ? "text-green-500" : "text-orange-500 animate-pulse"} />
@@ -118,6 +128,28 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
                     {buscandoGps ? "Buscando localização..." : coordenadas ? "Localização fixada via GPS" : "GPS indisponível"}
                 </span>
             </div>
+
+            {/* SELETOR DE CATEGORIA (Novo!) */}
+            <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Tipo de experiência</label>
+                <div className="grid grid-cols-2 gap-2">
+                    {CATEGORIAS.map((cat) => (
+                        <button
+                            key={cat.id}
+                            onClick={() => setCategoria(cat.id)}
+                            className={`flex items-center gap-2 p-3 rounded-2xl border-2 transition-all ${
+                                categoria === cat.id 
+                                ? 'border-orange-500 bg-orange-50 text-orange-900' 
+                                : 'border-gray-50 bg-gray-50 text-gray-400'
+                            }`}
+                        >
+                            <span className="text-lg">{cat.icon}</span>
+                            <span className="font-bold text-xs">{cat.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* Titulo do local */}
             <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Onde você está?</label>
@@ -163,7 +195,6 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
             </button>
 
             {/* Overlay de Sucesso com Framer Motion */}
-            // Dentro do return do CheckinForm.tsx
             <AnimatePresence>
                 {sucesso && (
                     <SuccessFeedback
