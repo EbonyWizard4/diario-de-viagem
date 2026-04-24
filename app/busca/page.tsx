@@ -9,6 +9,12 @@ import { collection, query, getDocs } from 'firebase/firestore';
 import { Search, ArrowLeft, SlidersHorizontal, Map as MapIcon, List, Loader2 } from 'lucide-react';
 import RouteCardBusca from '@/components/RouteCard'; // Componente que acabamos de ajustar
 import FilterBar from '@/components/FilterBar';
+import dynamic from 'next/dynamic';
+
+const MapView = dynamic(() => import('@/components/MapView'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded-3xl" />
+});
 
 export default function BuscaPage() {
   const [pesquisa, setPesquisa] = useState('');
@@ -65,7 +71,24 @@ export default function BuscaPage() {
     { id: 'role', label: 'Rolê', icon: '🏙️' },
   ];
 
-
+  // Dentro da BuscaPage()
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("Erro ao obter localização", error);
+          // Fallback: se o usuário negar, você pode setar a posição de Franco da Rocha ou SP
+          setUserLocation({ lat: -23.3275, lng: -46.7272 });
+        }
+      );
+    }
+  }, []);
 
   return (
     <main className="flex flex-col min-h-screen bg-gray-50 pb-20">
@@ -127,34 +150,18 @@ export default function BuscaPage() {
 
       {/* Resultados */}
       <section className="p-6">
-        <div className="mb-6">
-          <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">
-            {loading ? "Procurando..." : `${resultados.length} roteiros encontrados`}
-          </h2>
-        </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="animate-spin text-orange-500 w-8 h-8" />
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Carregando experiências...</p>
-          </div>
-        ) : (
+        {viewMode === 'lista' ? (
           <div className="space-y-6">
             {resultados.map((rota) => (
-              <RouteCardBusca
-                key={rota.id}
-                rota={rota}
-                userLocation={userLocation}
-                variant="default" // Aqui usamos o modo normal com o XP visível
-              />
+              <RouteCardBusca key={rota.id} rota={rota} userLocation={userLocation} />
             ))}
-
-            {resultados.length === 0 && !loading && (
-              <div className="text-center py-20">
-                <div className="text-4xl mb-4">🔍</div>
-                <p className="text-gray-400 font-medium italic">Nenhum roteiro encontrado para "{pesquisa}"</p>
-              </div>
-            )}
+          </div>
+        ) : (
+          <div className="animate-in fade-in duration-500">
+            <MapView rotas={resultados} userLocation={userLocation} />
+            <p className="mt-4 text-[10px] text-gray-400 font-bold uppercase text-center tracking-widest">
+              Toque nos pins para ver detalhes das rotas
+            </p>
           </div>
         )}
       </section>
