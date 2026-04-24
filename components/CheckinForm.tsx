@@ -120,6 +120,7 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
             <button onClick={onBack} className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase tracking-widest hover:text-orange-600 transition-colors">
                 <ChevronLeft size={16} /> Voltar
             </button>
+            
             {/* Indicador de GPS */}
             <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-xl border border-gray-100">
                 <MapPin size={14} className={coordenadas ? "text-green-500" : "text-orange-500 animate-pulse"} />
