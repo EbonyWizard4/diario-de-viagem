@@ -119,3 +119,23 @@ export const getLevelInfo = (xp: number) => {
     nextLevelAt: XP_PER_LEVEL 
   };
 };
+
+/**
+ * Calcula o progresso do usuário em uma rota específica
+ */
+export const getRouteProgress = async (userId: string, routeStops: string[]) => {
+  if (!routeStops || routeStops.length === 0) return 0;
+
+  // Busca todos os check-ins do usuário
+  const q = query(collection(db, 'checkins'), where('userId', '==', userId));
+  const snap = await getDocs(q);
+  
+  // Extrai os IDs dos locais onde o usuário já esteve
+  const locaisVisitados = snap.docs.map(doc => doc.data().stopId);
+
+  // Conta quantos locais da rota estão na lista de visitados
+  const concluidos = routeStops.filter(stopId => locaisVisitados.includes(stopId));
+
+  return concluidos.length;
+};
+
