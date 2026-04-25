@@ -5,7 +5,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState } from 'react';
-// @ts-ignore
 import 'leaflet-routing-machine';
 
 // --- SUB-COMPONENTE PARA A LINHA AZUL ---
@@ -47,19 +46,27 @@ function ChangeView({ center }: { center: L.LatLngExpression }) {
   return null;
 }
 
-// Ícone personalizado para os Pontos Turísticos
+// Ícone personalizado para os Pontos Turísticos (PARADAS)
 const localIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-  iconSize: [35, 35],
-  iconAnchor: [17, 35],
-  popupAnchor: [0, -35],
+  // Pin Laranja (Substituindo o vermelho anterior)
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+  
+  // O link acima usa o estilo padrão do Leaflet, mas em laranja.
+  // Se quiser um estilo mais moderno (bolinha), pode usar este:
+  // iconUrl: 'https://cdn-icons-png.flaticon.com/512/9131/9131546.png', 
+
+  iconSize: [25, 41], // Tamanho padrão do Leaflet para esse ícone
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  shadowSize: [41, 41],
 });
 
-// Ícone para o Usuário (Bolinha azul de GPS)
+// Ícone para o Usuário (Mantemos azul para diferenciar bem)
 const userIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3513/3513412.png',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
 });
 
 interface MapViewProps {
