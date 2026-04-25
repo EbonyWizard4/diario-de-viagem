@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Search, ArrowLeft, SlidersHorizontal, Map as MapIcon, List, Loader2 } from 'lucide-react';
 import RouteCardBusca from '@/components/RouteCard'; // Componente que acabamos de ajustar
 import FilterBar from '@/components/FilterBar';
@@ -33,22 +33,54 @@ export default function BuscaPage() {
   }, []);
 
   // 2. Buscar as rotas reais do Firebase
-  useEffect(() => {
-    async function carregarRotas() {
-      setLoading(true);
-      try {
-        const q = query(collection(db, 'routes'));
-        const snap = await getDocs(q);
-        const lista = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setRotas(lista);
-      } catch (e) {
-        console.error("Erro ao buscar rotas:", e);
-      } finally {
-        setLoading(false);
-      }
+// app/busca/page.tsx
+
+useEffect(() => {
+  async function carregarRotas() {
+    setLoading(true);
+    try {
+      const q = query(collection(db, 'routes'));
+      const snap = await getDocs(q);
+      
+      // Aqui está o "pulo do gato"
+      const listaComDetalhes = await Promise.all(snap.docs.map(async (routeDoc) => {
+        const data = routeDoc.data();
+        const stopsIds = data.stops || [];
+        
+        // Buscamos os dados de cada parada (checkin/local)
+        const stopsPromessas = stopsIds.map(async (stopId: string) => {
+          const stopDoc = await getDoc(doc(db, 'checkins', stopId));
+          if (stopDoc.exists()) {
+            const sData = stopDoc.data();
+            return {
+              id: stopDoc.id,
+              name: sData.name || sData.title,
+              // Ajuste conforme o nome do campo no seu Firebase (latitude ou lat)
+              lat: sData.location?.latitude || sData.lat,
+              lng: sData.location?.longitude || sData.lng
+            };
+          }
+          return null;
+        });
+
+        const stopsResolved = (await Promise.all(stopsPromessas)).filter(s => s !== null);
+
+        return {
+          id: routeDoc.id,
+          ...data,
+          stopsData: stopsResolved // Agora o MapView vai encontrar os dados aqui!
+        };
+      }));
+
+      setRotas(listaComDetalhes);
+    } catch (e) {
+      console.error("Erro ao hidratar rotas:", e);
+    } finally {
+      setLoading(false);
     }
-    carregarRotas();
-  }, []);
+  }
+  carregarRotas();
+}, []);
 
   // 3. Lógica de filtro atualizada (Pesquisa + Categoria)
   const resultados = rotas.filter(rota => {
