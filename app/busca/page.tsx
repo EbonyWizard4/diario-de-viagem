@@ -5,10 +5,16 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Search, ArrowLeft, SlidersHorizontal, Map as MapIcon, List, Loader2 } from 'lucide-react';
 import RouteCardBusca from '@/components/RouteCard'; // Componente que acabamos de ajustar
 import FilterBar from '@/components/FilterBar';
+import dynamic from 'next/dynamic';
+
+const MapView = dynamic(() => import('@/components/MapView'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded-3xl" />
+});
 
 export default function BuscaPage() {
   const [pesquisa, setPesquisa] = useState('');
@@ -27,22 +33,54 @@ export default function BuscaPage() {
   }, []);
 
   // 2. Buscar as rotas reais do Firebase
-  useEffect(() => {
-    async function carregarRotas() {
-      setLoading(true);
-      try {
-        const q = query(collection(db, 'routes'));
-        const snap = await getDocs(q);
-        const lista = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setRotas(lista);
-      } catch (e) {
-        console.error("Erro ao buscar rotas:", e);
-      } finally {
-        setLoading(false);
-      }
+// app/busca/page.tsx
+
+useEffect(() => {
+  async function carregarRotas() {
+    setLoading(true);
+    try {
+      const q = query(collection(db, 'routes'));
+      const snap = await getDocs(q);
+      
+      // Aqui está o "pulo do gato"
+      const listaComDetalhes = await Promise.all(snap.docs.map(async (routeDoc) => {
+        const data = routeDoc.data();
+        const stopsIds = data.stops || [];
+        
+        // Buscamos os dados de cada parada (checkin/local)
+        const stopsPromessas = stopsIds.map(async (stopId: string) => {
+          const stopDoc = await getDoc(doc(db, 'checkins', stopId));
+          if (stopDoc.exists()) {
+            const sData = stopDoc.data();
+            return {
+              id: stopDoc.id,
+              name: sData.name || sData.title,
+              // Ajuste conforme o nome do campo no seu Firebase (latitude ou lat)
+              lat: sData.location?.latitude || sData.lat,
+              lng: sData.location?.longitude || sData.lng
+            };
+          }
+          return null;
+        });
+
+        const stopsResolved = (await Promise.all(stopsPromessas)).filter(s => s !== null);
+
+        return {
+          id: routeDoc.id,
+          ...data,
+          stopsData: stopsResolved // Agora o MapView vai encontrar os dados aqui!
+        };
+      }));
+
+      setRotas(listaComDetalhes);
+    } catch (e) {
+      console.error("Erro ao hidratar rotas:", e);
+    } finally {
+      setLoading(false);
     }
-    carregarRotas();
-  }, []);
+  }
+  carregarRotas();
+}, []);
 
   // 3. Lógica de filtro atualizada (Pesquisa + Categoria)
   const resultados = rotas.filter(rota => {
@@ -65,7 +103,24 @@ export default function BuscaPage() {
     { id: 'role', label: 'Rolê', icon: '🏙️' },
   ];
 
-
+  // Dentro da BuscaPage()
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("Erro ao obter localização", error);
+          // Fallback: se o usuário negar, você pode setar a posição de Franco da Rocha ou SP
+          setUserLocation({ lat: -23.3275, lng: -46.7272 });
+        }
+      );
+    }
+  }, []);
 
   return (
     <main className="flex flex-col min-h-screen bg-gray-50 pb-20">
@@ -127,34 +182,18 @@ export default function BuscaPage() {
 
       {/* Resultados */}
       <section className="p-6">
-        <div className="mb-6">
-          <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[2px]">
-            {loading ? "Procurando..." : `${resultados.length} roteiros encontrados`}
-          </h2>
-        </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 className="animate-spin text-orange-500 w-8 h-8" />
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Carregando experiências...</p>
-          </div>
-        ) : (
+        {viewMode === 'lista' ? (
           <div className="space-y-6">
             {resultados.map((rota) => (
-              <RouteCardBusca
-                key={rota.id}
-                rota={rota}
-                userLocation={userLocation}
-                variant="default" // Aqui usamos o modo normal com o XP visível
-              />
+              <RouteCardBusca key={rota.id} rota={rota} userLocation={userLocation} />
             ))}
-
-            {resultados.length === 0 && !loading && (
-              <div className="text-center py-20">
-                <div className="text-4xl mb-4">🔍</div>
-                <p className="text-gray-400 font-medium italic">Nenhum roteiro encontrado para "{pesquisa}"</p>
-              </div>
-            )}
+          </div>
+        ) : (
+          <div className="animate-in fade-in duration-500">
+            <MapView rotas={resultados} userLocation={userLocation} />
+            <p className="mt-4 text-[10px] text-gray-400 font-bold uppercase text-center tracking-widest">
+              Toque nos pins para ver detalhes das rotas
+            </p>
           </div>
         )}
       </section>
