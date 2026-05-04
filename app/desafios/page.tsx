@@ -130,7 +130,8 @@ export default function HomePage() {
                 <RouteCard
                   key={rota.id}
                   rota={rota}
-                  userLocation={userLocation} // 👈 Passando a posição atual do usuário
+                  userLocation={userLocation} 
+                  variant="challenge" // 👈 Ativa o modo Strava/Duolingo
                 />
               ))
             ) : (

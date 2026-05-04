@@ -14,6 +14,14 @@ import BotaoCheckinParada from '@/components/BotaoCheckinParada';
 import { useAuth } from '@/context/AuthContext';
 import { isRouteFavorite, toggleFavorite } from '@/services/checkinService';
 
+import dynamic from 'next/dynamic';
+
+// Import dinâmico do seu MapView (importante para evitar erro de SSR do Leaflet)
+const MapView = dynamic(() => import('@/components/MapView'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded-3xl" />
+});
+
 export default function RoteiroDetalhes() {
   const params = useParams();
   const router = useRouter();
@@ -26,9 +34,11 @@ export default function RoteiroDetalhes() {
 
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [checkinsConcluidosNoDia, setCheckinsConcluidosNoDia] = useState<string[]>([]);
-  
+
   // Usamos o ID do usuário logado ou o mock se não houver ninguém
   const userId = user?.uid || "uV2";
+
+  const [stopParaNavegar, setStopParaNavegar] = useState<any | null>(null);
 
   // 1. Verificar se é favorito ao carregar
   useEffect(() => {
@@ -124,7 +134,7 @@ export default function RoteiroDetalhes() {
           <button onClick={() => router.back()} className="p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-lg active:scale-90 transition-all">
             <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
-          
+
           <div className="flex gap-2">
             <button
               onClick={handleToggleFavorite}
@@ -172,12 +182,21 @@ export default function RoteiroDetalhes() {
           <div className="absolute left-[19px] top-2 bottom-2 w-[4px] bg-gray-100 rounded-full" />
           {paradas.map((stop, index) => {
             const jaFezCheckin = checkinsConcluidosNoDia.includes(stop.id);
+            // função para padronizar os dados antes de mandar pro mapa
+            const abrirNavegador = () => {
+              setStopParaNavegar({
+                ...stop,
+                lat: stop.location?.latitude || stop.lat,
+                lng: stop.location?.longitude || stop.lng
+              });
+            };
             return (
               <div key={stop.id} className="relative pl-14 mb-12">
                 <div className="absolute left-0 top-0 w-10 h-10 rounded-2xl bg-gray-900 flex items-center justify-center z-10 shadow-lg border-4 border-white">
                   <span className="text-xs font-black text-white">{index + 1}</span>
                 </div>
-                <div className="group transition-all">
+
+                <div className="group transition-all cursor-pointer" onClick={abrirNavegador}>
                   <VisitCard
                     placeName={stop.placeName}
                     comment={stop.comment}
@@ -186,6 +205,12 @@ export default function RoteiroDetalhes() {
                     date={stop.timestamp}
                     isCompleted={jaFezCheckin}
                   />
+                  {/* Adicionando um pequeno botão de "Como Chegar" visual */}
+                  <div className="mt-2 flex justify-end">
+                    <span className="text-[9px] font-black uppercase text-orange-600 flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-all">
+                      <MapIcon size={12} /> Ver no mapa
+                    </span>
+                  </div>
                   <div className="mt-4 px-2">
                     <BotaoCheckinParada
                       stop={stop}
@@ -199,6 +224,47 @@ export default function RoteiroDetalhes() {
           })}
         </div>
       </section>
+
+      {/* Modal de Navegação */}
+      {stopParaNavegar && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-white animate-in slide-in-from-bottom duration-300">
+          {/* Header do Navegador */}
+          <div className="p-6 flex items-center justify-between border-b border-gray-100">
+            <div>
+              <h2 className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Navegando para</h2>
+              <h3 className="text-lg font-black text-gray-900 uppercase italic">{stopParaNavegar.placeName}</h3>
+            </div>
+            <button
+              onClick={() => setStopParaNavegar(null)}
+              className="p-3 bg-gray-100 rounded-2xl font-black text-xs uppercase"
+            >
+              Fechar
+            </button>
+          </div>
+
+          {/* Área do Mapa - Aqui passamos a parada dentro de um array para o MapView reconhecer */}
+          <div className="flex-1 relative">
+            <MapView
+              rotas={[{ stopsData: [stopParaNavegar] }]}
+              userLocation={userLocation}
+            />
+          </div>
+
+          {/* Footer com Botão de Ação rápida */}
+          <div className="p-6 bg-white border-t border-gray-100">
+            <button
+              onClick={() => {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${stopParaNavegar.lat},${stopParaNavegar.lng}&travelmode=walking`;
+                window.open(url, '_blank');
+              }}
+              className="w-full bg-gray-900 text-white py-4 rounded-2xl font-black uppercase italic tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl"
+            >
+              <MapIcon size={20} className="text-orange-500" />
+              Abrir no GPS Externo
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

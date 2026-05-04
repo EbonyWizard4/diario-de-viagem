@@ -53,7 +53,8 @@ export const registrarVisita = async (
   rating: number,
   comment: string,
   location: GeoPoint | null,
-  photoUrl: string = ""
+  photoUrl: string = "",
+  category: string // <--- Adicione este parâmetro
 ) => {
   // 1. Registra o check-in normalmente
   const docRef = await addDoc(collection(db, 'checkins'), {
@@ -64,6 +65,7 @@ export const registrarVisita = async (
     location,
     photoUrl: photoUrl || "",
     timestamp: serverTimestamp(),
+    category, // <--- Salva no banco!
     status: 'avulso'
   });
 

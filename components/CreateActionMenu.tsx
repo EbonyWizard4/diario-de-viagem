@@ -14,7 +14,11 @@ type Step = 'menu' | 'camera' | 'checkin' | 'route';
 export default function CreateActionMenu({
   isOpen,
   onClose,
+<<<<<<< HEAD
+  visitas
+=======
   visitas 
+>>>>>>> camera
 }: {
   isOpen: boolean,
   onClose: () => void,
@@ -34,8 +38,14 @@ export default function CreateActionMenu({
   }, [isOpen]);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait"> {/* O mode="wait" ajuda a evitar conflitos de animação */}
       {isOpen && (
+<<<<<<< HEAD
+        <motion.div key="action-menu-wrapper" className="relative z-[60]">
+          {/* Overlay - Adicionado Key */}
+          <motion.div
+            key="menu-overlay"
+=======
         /* 
            🚀 SOLUÇÃO: Removido o Fragmento (<>) e adicionado um wrapper motion.div 
            com uma key única. Isso resolve o erro de chaves duplicadas/vazias.
@@ -43,20 +53,26 @@ export default function CreateActionMenu({
         <motion.div key="create-action-wrapper">
           <motion.div
             key="action_menu_backdrop"
+>>>>>>> camera
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 z-[60] backdrop-blur-sm"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm"
           />
 
+          {/* Modal Content - Adicionado Key */}
           <motion.div
+<<<<<<< HEAD
+            key="menu-sheet"
+=======
             key="action_menu_content"
+>>>>>>> camera
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[40px] p-8 z-[70] shadow-2xl border-t border-orange-100 max-h-[90vh] overflow-y-auto no-scrollbar"
+            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[40px] p-8 shadow-2xl border-t border-orange-100 max-h-[90vh] overflow-y-auto no-scrollbar"
           >
             {/* BOTÃO VOLTAR */}
             {step !== 'menu' && (
@@ -71,7 +87,11 @@ export default function CreateActionMenu({
 
             {/* PASSO 1: MENU PRINCIPAL */}
             {step === 'menu' && (
+<<<<<<< HEAD
+              <motion.div key="step-menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+=======
               <div key="step-menu-container">
+>>>>>>> camera
                 <div className="flex justify-between items-center mb-8">
                   <h2 className="text-xl font-black text-gray-900 italic uppercase">O que vamos fazer?</h2>
                   <button onClick={onClose} className="p-2 bg-gray-100 rounded-full text-gray-400"><X size={20} /></button>
@@ -90,7 +110,10 @@ export default function CreateActionMenu({
                   </button>
 
                   <button
+<<<<<<< HEAD
+=======
                     key="btn-rota"
+>>>>>>> camera
                     onClick={() => setStep('route')}
                     className="flex flex-col items-center gap-3 p-6 bg-blue-50 rounded-[32px] border-2 border-transparent hover:border-blue-200 transition-all active:scale-95"
                   >
@@ -100,6 +123,29 @@ export default function CreateActionMenu({
                     <span className="font-bold text-sm text-blue-900">Nova Rota</span>
                   </button>
                 </div>
+<<<<<<< HEAD
+              </motion.div>
+            )}
+
+            {/* --- DEMAIS PASSOS (Ajustados com chaves para animação limpa) --- */}
+            {step === 'camera' && (
+              <motion.div key="step-camera">
+                <CameraCapture
+                  onCancel={() => setStep('menu')}
+                  onCapture={(blob) => {
+                    setTempPhoto(blob);
+                    setStep('checkin');
+                  }}
+                />
+              </motion.div>
+            )}
+
+            {step === 'checkin' && (
+              <motion.div key="step-checkin">
+                <CheckinForm
+                  photo={tempPhoto}
+                  onBack={() => setStep('camera')}
+=======
               </div>
             )}
 
@@ -130,12 +176,34 @@ export default function CreateActionMenu({
               <div key="step-route-container" className="pt-4">
                 <RouteCreator
                   visitas={visitas}
+>>>>>>> camera
                   onSuccess={() => onClose()}
                 />
-              </div>
+              </motion.div>
+            )}
+
+            {step === 'route' && (
+              <motion.div key="step-route" className="pt-4">
+                <RouteCreator
+                  visitas={visitas}
+                  onSuccess={() => onClose()}
+                />
+              </motion.div>
             )}
           </motion.div>
         </motion.div>
+<<<<<<< HEAD
+      )}
+
+      {/* --- MODAL DE VISITA FORA DO FLOW DO MENU PARA EVITAR O BUG DE KEY --- */}
+      {isVisitaModalOpen && (
+        <ModalVisitaCompleta
+          key="modal-visita-externo"
+          isOpen={isVisitaModalOpen}
+          onClose={() => setIsVisitaModalOpen(false)}
+        />
+      )}
+=======
       )}
 
       {/* Modais externos não precisam estar dentro do wrapper motion */}
@@ -144,6 +212,7 @@ export default function CreateActionMenu({
         isOpen={isVisitaModalOpen}
         onClose={() => setIsVisitaModalOpen(false)}
       />
+>>>>>>> camera
     </AnimatePresence>
   );
 }
