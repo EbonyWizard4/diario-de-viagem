@@ -426,7 +426,7 @@ export default function PerfilPage() {
 
           {/* --- CONTEÚDO: ROTAS --- */}
           {activeTab === 'rotas' && (
-            <div className="px-6"> {/* Garanta que tenha o padding lateral aqui */}
+            <div className="px-6 animate-pulse space-y-4"> {/* Garanta que tenha o padding lateral aqui */}
               {rotas.length > 0 ? (
                 rotas.map((rota) => (
                   <RouteCard

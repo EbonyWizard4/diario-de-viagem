@@ -5,12 +5,12 @@
 import { useState, useEffect } from 'react';
 import { calculateDistance } from '@/lib/utils';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { Check, MapPin, Camera, Star } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { Check, MapPin, Camera } from 'lucide-react';
 import ModalVisitaCompleta from './modals/ModalCriarVisita';
 
-import { registerDailyCheckin, checkAndGrantBadges } from '@/services/gamificationService'; // Adicione o checkAndGrantBadges
-import { useAuth } from '@/context/AuthContext'; // Precisamos do user logado
+import { registerDailyCheckin, checkAndGrantBadges } from '@/services/gamificationService'; 
+import { useAuth } from '@/context/AuthContext'; 
 
 interface BotaoProps {
     stop: any;
@@ -19,13 +19,12 @@ interface BotaoProps {
 }
 
 export default function BotaoCheckinParada({ stop, userLocation, userId }: BotaoProps) {
-const { user } = useAuth(); // Pega o usuário do contexto
+const { user } = useAuth(); 
     const [status, setStatus] = useState<'longe' | 'perto' | 'concluido' | 'loading'>('loading');
     const [distanciaTexto, setDistanciaTexto] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [showFullVisitModal, setShowFullVisitModal] = useState(false);
 
-    // ✅ REMOVI A FUNÇÃO handleCheckin QUE ESTAVA SOLTA AQUI
 
     const executarCheckinSimples = async () => {
         try {

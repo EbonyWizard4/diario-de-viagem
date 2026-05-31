@@ -1,22 +1,46 @@
+/* PAGINA INICIAL DO APP */
 'use client';
-// src/app/page.tsx
-import { useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link'; // Importante para a navegação
-import { ROUTES_MOCK } from '@/constants/mockData';
-import { HelpCircle } from 'lucide-react';
 
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { HelpCircle, MapPin } from 'lucide-react';
+import { getDestaqueRoute, RouteData } from '@/services/routeService';
 
 export default function Home() {
-  // Pegamos o primeiro roteiro do mock para o destaque
-  const destaque = ROUTES_MOCK[0];
-  const [pesquisa, setPesquisa] = useState('');
-  const [viewMode, setViewMode] = useState<'lista' | 'mapa'>('lista');
-  // Lógica de filtro: busca no título ou nas tags
-  const resultados = ROUTES_MOCK.filter(rota =>
-    rota.title.toLowerCase().includes(pesquisa.toLowerCase()) ||
-    rota.tags.some(tag => tag.toLowerCase().includes(pesquisa.toLowerCase()))
-  );
+  const [destaque, setDestaque] = useState<RouteData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [bairroUsuario, setBairroUsuario] = useState<string>('');
+
+  useEffect(() => {
+    const carregarDestaqueDemonstracao = async () => {
+      setLoading(true);
+      try {
+        // Busca a primeira rota disponível de forma direta e infalível no Firestore
+        const rota = await getDestaqueRoute();
+        setDestaque(rota);
+      } catch (error) {
+        console.error("Falha no carregamento de demonstração:", error);
+      } finally {
+        setLoading(false);
+      }
+
+      // Tenta capturar a localização em segundo plano apenas de forma passiva
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            console.log("Localização passiva capturada com sucesso:", position.coords);
+            // Se futuramente quiser guardar o bairro de forma passiva, a lógica entraria aqui
+          },
+          (error) => {
+            console.warn("Geolocalização passiva ignorada ou negada.", error);
+          }
+        );
+      }
+    };
+
+    carregarDestaqueDemonstracao();
+  }, []);
 
   return (
     <main className="flex flex-col min-h-screen bg-white pb-24">
@@ -43,66 +67,91 @@ export default function Home() {
         </p>
       </section>
 
-      {/* Card de Destaque - Elemento de Acesso à Busca */}
+      {/* Card de Destaque Dinâmico */}
       <section className="px-6 mt-6">
-        <Link href={`/roteiro/1`} key={`1`}>
-          <div className="relative group cursor-pointer overflow-hidden rounded-3xl shadow-xl aspect-[4/3]">
-            {/* Imagem de Fundo (Placeholder enquanto você não sobe a real) */}
-            {/* --- ATUALIZAÇÃO DA IMAGEM --- */}
-            {destaque.imageUrl ? (
-              <Image
-                src={destaque.imageUrl} // Usando o caminho definido no MockData
-                alt={destaque.title}
-                fill // Faz a imagem preencher o contêiner 'relative'
-                className="object-cover group-hover:scale-105 transition-transform duration-300" // Cobre a área e adiciona efeito hover
-                priority // Carrega esta imagem com prioridade (LCP)
-                loading="eager" // Carrega imediatamente para melhorar o LCP
-              />
-            ) : (
-              // Esqueleto de carregamento se não houver imagem
-              <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-            )}
-            {/* ------------------------------- */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
-            <div className="absolute inset-0 bg-gray-200 animate-pulse" /> {/* Esqueleto de carregamento */}
+        {loading ? (
+          /* Esqueleto de Carregamento (Shimmer Effect) */
+          <div className="w-full rounded-3xl bg-gray-100 animate-pulse aspect-[4/3]" />
+        ) : destaque ? (
+          <Link href={`/roteiro/${destaque.id}`} key={destaque.id}>
+            <div className="relative group cursor-pointer overflow-hidden rounded-3xl shadow-xl aspect-[4/3]">
+              {/* Image ajustada com sizes para sumir com o warning do console */}
+              {destaque.imageUrl && !destaque.imageUrl.includes('googleusercontent.com') ? (
+                <Image
+                  src={destaque.imageUrl}
+                  alt={destaque.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  priority
+                />
+              ) : (
+                /* Fallback robusto com imagem urbana caso a imagem do banco seja nula ou avatar do Google */
+                <Image
+                  src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=800&q=80"
+                  alt="Destaque da Cidade"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  priority
+                />
+              )}
 
-            {/* Conteúdo do Card */}
-            <div className="absolute bottom-0 left-0 p-6 z-20 w-full text-white">
-              <div className="flex gap-2 mb-2">
-                <span className="text-[10px] font-bold bg-white/20 backdrop-blur-md px-2 py-1 rounded">GASTRONOMIA</span>
-                <span className="text-[10px] font-bold bg-white/20 backdrop-blur-md px-2 py-1 rounded">CULTURA</span>
-              </div>
-              <h3 className="text-xl font-bold mb-1">{destaque.title}</h3>
-              <div className="flex items-center gap-4 text-xs opacity-90">
-                <span>📍 {destaque.stopsCount} paradas</span>
-                <span>⏱️ ~{destaque.duration}</span>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-10" />
+
+              {/* Indicador de Rota Próxima */}
+              {bairroUsuario && destaque.bairro === bairroUsuario && (
+                <div className="absolute top-4 left-4 z-20 flex items-center gap-1 bg-green- green-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg animate-bounce">
+                  <MapPin size={10} /> PERTO DE VOCÊ
+                </div>
+              )}
+
+              {/* Conteúdo do Card */}
+              <div className="absolute bottom-0 left-0 p-6 z-20 w-full text-white">
+                <div className="flex gap-2 mb-2">
+                  {destaque.tags?.map((tag, idx) => (
+                    <span key={idx} className="text-[10px] font-bold bg-white/20 backdrop-blur-md px-2 py-1 rounded uppercase">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <h3 className="text-xl font-bold mb-1">{destaque.title}</h3>
+                <div className="flex items-center gap-4 text-xs opacity-90">
+                  <span>📍 {destaque.stopsCount} paradas</span>
+                  <span>⏱️ {destaque.duration?.value} {destaque.duration?.unit}</span>
+                  <span>⭐ {destaque.rating?.toFixed(1) || '5.0'}</span>
+                </div>
               </div>
             </div>
+          </Link>
+        ) : (
+          <div className="text-center p-6 bg-gray-50 rounded-3xl border border-dashed border-gray-200 text-gray-400 text-sm">
+            Nenhuma rota disponível no momento.
           </div>
-        </Link>
+        )}
       </section>
 
-      {/* Lista Rápida de Benefícios (conforme o Figma) */}
+      {/* Lista Rápida de Benefícios */}
       <section className="px-6 mt-10 space-y-6">
-        < Link href={`/desafios`} >
-          <div className="flex items-start gap-4">
-            <div className="bg-orange-50 p-2 rounded-xl text-orange-600 font-bold">🗺️</div>
+        <Link href="/desafios">
+          <div className="flex items-start gap-4 cursor-pointer group">
+            <div className="bg-orange-50 p-2 rounded-xl text-orange-600 font-bold group-hover:bg-orange-100 transition-colors">🗺️</div>
             <div>
-              <h4 className="font-bold text-gray-900">Roteiros Prontos</h4>
+              <h4 className="font-bold text-gray-900 group-hover:text-orange-600 transition-colors">Roteiros Prontos</h4>
               <p className="text-xs text-gray-500">Do café da manhã ao samba, roteiros completos passo a passo.</p>
             </div>
           </div>
         </Link>
-
-        <div className="flex items-start gap-4">
-          <div className="bg-blue-50 p-2 rounded-xl text-blue-600 font-bold">👥</div>
-          <div>
-            <h4 className="font-bold text-gray-900">Comunidade Local</h4>
-            <p className="text-xs text-gray-500">Dicas e avaliações de quem realmente conhece o lugar.</p>
+        <Link href="/busca">
+          <div className="flex items-start gap-4 cursor-pointer group">
+            <div className="bg-orange-50 p-2 rounded-xl text-orange-600 font-bold group-hover:bg-orange-100 transition-colors">👥</div>
+            <div>
+              <h4 className="font-bold text-gray-900 group-hover:text-orange-600 transition-colors">Comunidade Local</h4>
+              <p className="text-xs text-gray-500">Dicas e avaliações de quem realmente conhece o lugar.</p>
+            </div>
           </div>
-        </div>
+        </Link>
       </section>
-
     </main>
   );
 }

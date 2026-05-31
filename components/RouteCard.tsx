@@ -13,7 +13,6 @@ import { useAuth } from '@/context/AuthContext';
 import { isRouteFavorite, toggleFavorite } from '@/services/checkinService';
 import { getRouteProgress, XP_VALUES } from '@/services/gamificationService';
 
-// components/RouteCard.tsx
 import ProgressBar from './ProgressBar'; // Importe o que criamos acima
 
 interface RouteCardProps {
