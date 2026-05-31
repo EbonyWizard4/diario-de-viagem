@@ -1,7 +1,7 @@
+// src/app/api/upload/route.ts
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
-// src/app/api/upload/route.ts
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);

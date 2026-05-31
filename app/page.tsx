@@ -8,7 +8,6 @@ import { HelpCircle } from 'lucide-react';
 
 
 export default function Home() {
-  // Pegamos o primeiro roteiro do mock para o destaque
   const destaque = ROUTES_MOCK[0];
   const [pesquisa, setPesquisa] = useState('');
   const [viewMode, setViewMode] = useState<'lista' | 'mapa'>('lista');

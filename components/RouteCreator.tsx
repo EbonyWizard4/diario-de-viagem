@@ -38,12 +38,9 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
     const [costLevel, setCostLevel] = useState('médio');
 
     const [isSaving, setIsSaving] = useState(false);
-    // 1. No topo, junto com os outros estados:
     const [isSuccess, setIsSuccess] = useState(false);
-    // Se tiver menos de 2 visitas, também é bom dar um aviso, mas mostrar a lista
     const isDisabled = selectedIds.length < 2;
 
-    // 2. Atualize a função handleSaveRoute:
     const handleSaveRoute = async () => {
         if (!routeName || selectedIds.length < 2 || !timeValue) {
             alert("Preencha o nome, o tempo e escolha pelo menos 2 paradas!");
@@ -68,7 +65,7 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
                 userId: auth.currentUser?.uid,
                 title: routeName,
                 description,
-                bairro: bairroAutomatico, // <--- SALVANDO O BAIRRO AQUI
+                bairro: bairroAutomatico, 
                 duration: {
                     value: Number(timeValue),
                     unit: timeUnit
@@ -93,7 +90,6 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
         }
     };
 
-    // 3. RETORNO DE SUCESSO
     if (isSuccess) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4 animate-in fade-in zoom-in duration-500">

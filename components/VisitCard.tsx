@@ -10,7 +10,7 @@ interface VisitCardProps {
   rating: number;
   photoUrl?: string;
   date: any; 
-  isCompleted?: boolean; // 👈 Nova prop para o feedback
+  isCompleted?: boolean; 
 }
 
 export default function VisitCard({ placeName, comment, rating, photoUrl, date, isCompleted }: VisitCardProps) {

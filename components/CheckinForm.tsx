@@ -1,20 +1,19 @@
 // src/components/CheckinForm.tsx
 'use client';
 
-import { useState, useEffect } from 'react'; // Adicionamos useEffect
+import { useState, useEffect } from 'react'; 
 import { Star, Loader2, ChevronLeft, MapPin } from 'lucide-react';
 import { registrarVisita } from '@/services/checkinService';
 import { useAuth } from '@/context/AuthContext';
-import { GeoPoint } from 'firebase/firestore'; // Importe o tipo do Firebase
+import { GeoPoint } from 'firebase/firestore'; 
 import { AnimatePresence } from 'framer-motion';
-import SuccessFeedback from './SuccessFeedback'; // Importe o componente de feedback
+import SuccessFeedback from './SuccessFeedback'; 
 import { awardXP, checkAndGrantBadges } from '@/services/gamificationService';
 
 interface CheckinFormProps {
   photo: Blob | null;
   onBack: () => void;
   onSuccess: () => void;
-  // 📍 ADICIONE ESTA LINHA:
   initialData?: {
     placeName?: string;
     location?: any;
@@ -22,7 +21,6 @@ interface CheckinFormProps {
   };
 }
 
-// 1. Defina as categorias disponíveis para o usuário escolher
 const CATEGORIAS = [
   { id: 'gastronomia', label: 'Gastronomia', icon: '🍕' },
   { id: 'artes', label: 'Artes', icon: '🎨' },
@@ -37,17 +35,14 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
     const [comentario, setComentario] = useState('');
     const [enviando, setEnviando] = useState(false);
 
-    // confirma que deu sucesso no post.
     const [sucesso, setSucesso] = useState(false);
 
-    // Novo estado para a localização
     const [coordenadas, setCoordenadas] = useState<{ lat: number, lng: number } | null>(null);
     const [buscandoGps, setBuscandoGps] = useState(false);
 
     const [placeName, setPlaceName] = useState(initialData?.placeName || '');
     const [location, setLocation] = useState(initialData?.location || null);
 
-    // Efeito para buscar a localização assim que o form abrir
     useEffect(() => {
         if ("geolocation" in navigator) {
             setBuscandoGps(true);
@@ -77,11 +72,11 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
 
         try {
             let fotoUrl = "";
-            // ... (seu código de upload de foto continua igual)
+            
 
             const locationData = coordenadas ? new GeoPoint(coordenadas.lat, coordenadas.lng) : null;
             
-            // 2. AJUSTE: Passamos a 'categoria' para o seu serviço de registro
+            
             await registrarVisita(
                 user.uid, 
                 local, 
@@ -89,17 +84,15 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
                 comentario, 
                 locationData, 
                 fotoUrl || "",
-                categoria // <--- Enviar categoria aqui
+                categoria 
             );
 
-            // 3. GAMIFICAÇÃO: Dar XP e verificar Badges
             await awardXP(user.uid, 'AVALIAR_LOCAL');
             const novasBadges = await checkAndGrantBadges(user.uid);
 
             setSucesso(true);
 
             if (novasBadges) {
-                // Opcional: Você pode passar isso para o SuccessFeedback mostrar um troféu
                 console.log("Ganhou badges:", novasBadges);
             }
 
@@ -113,7 +106,6 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
         }
     };
 
-    // Elementos da interface do formulário
     return (
         <div className="space-y-6">
             {/* Botão voltar */}

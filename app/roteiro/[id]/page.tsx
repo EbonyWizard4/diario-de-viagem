@@ -10,13 +10,11 @@ import { ArrowLeft, Heart, Share2, Clock, MapPin, DollarSign, Map as MapIcon } f
 import VisitCard from '@/components/VisitCard';
 import BotaoCheckinParada from '@/components/BotaoCheckinParada';
 
-// 📍 IMPORTANTE: Importe o seu contexto de Auth e o serviço de checkin
 import { useAuth } from '@/context/AuthContext';
 import { isRouteFavorite, toggleFavorite } from '@/services/checkinService';
 
 import dynamic from 'next/dynamic';
 
-// Import dinâmico do seu MapView (importante para evitar erro de SSR do Leaflet)
 const MapView = dynamic(() => import('@/components/MapView'), {
   ssr: false,
   loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded-3xl" />
@@ -35,7 +33,6 @@ export default function RoteiroDetalhes() {
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [checkinsConcluidosNoDia, setCheckinsConcluidosNoDia] = useState<string[]>([]);
 
-  // Usamos o ID do usuário logado ou o mock se não houver ninguém
   const userId = user?.uid || "uV2";
 
   const [stopParaNavegar, setStopParaNavegar] = useState<any | null>(null);

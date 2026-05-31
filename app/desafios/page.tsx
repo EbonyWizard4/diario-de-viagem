@@ -131,7 +131,7 @@ export default function HomePage() {
                   key={rota.id}
                   rota={rota}
                   userLocation={userLocation} 
-                  variant="challenge" // 👈 Ativa o modo Strava/Duolingo
+                  variant="challenge" 
                 />
               ))
             ) : (

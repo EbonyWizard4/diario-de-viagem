@@ -46,7 +46,6 @@ export const isRouteFavorite = async (userId: string, routeId: string) => {
   const favoriteDoc = await getDoc(favoriteRef);
   return favoriteDoc.exists();
 };
-
 export const registrarVisita = async (
   userId: string,
   placeName: string,
@@ -54,7 +53,7 @@ export const registrarVisita = async (
   comment: string,
   location: GeoPoint | null,
   photoUrl: string = "",
-  category: string // <--- Adicione este parâmetro
+  category: string 
 ) => {
   // 1. Registra o check-in normalmente
   const docRef = await addDoc(collection(db, 'checkins'), {
@@ -65,21 +64,29 @@ export const registrarVisita = async (
     location,
     photoUrl: photoUrl || "",
     timestamp: serverTimestamp(),
-    category, // <--- Salva no banco!
+    category, 
     status: 'avulso'
   });
 
-  // 2. LÓGICA DE GAMIFICAÇÃO: Soma XP ao usuário
-  // Vamos dar 50 XP por cada visita registrada.
+  // 2. LÓGICA DE GAMIFICAÇÃO SEGURA (Upsert)
   try {
     const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      xp: increment(50), // O Firebase faz a soma atômica no servidor
-      totalCheckins: increment(1)
-    });
+    
+    /* 🚀 SOLUÇÃO DO BUG: Trocamos 'updateDoc' por 'setDoc' com '{ merge: true }'.
+       Se o documento do usuário não existir, ele cria o registro com o XP e incrementa.
+       Se já existir, atualiza os campos de forma incremental sem tocar no resto.
+    */
+    await setDoc(userRef, {
+      xp: increment(50), 
+      totalCheckins: increment(1),
+      lastActive: serverTimestamp() // Bom para registrar o último momento que ganhou XP
+    }, { merge: true });
+
+    console.log(`Sucesso! 50 XP adicionados ao usuário: ${userId}`);
+
   } catch (error) {
-    console.error("Erro ao atualizar XP do usuário:", error);
-    // Nota: O check-in foi salvo, mas o XP falhou (ex: user doc não existe)
+    // Agora esse bloco só será acionado por erros graves (ex: falta de internet ou regras de segurança do Firebase)
+    console.error("Erro crítico ao atualizar gamificação do usuário:", error);
   }
 
   return docRef;
