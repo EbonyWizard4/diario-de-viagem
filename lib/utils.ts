@@ -1,6 +1,6 @@
 // src/lib/utils.ts
 
-/**
+/*
  * Calcula a distância em KM entre dois pontos usando a fórmula de Haversine
  */
 export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
