@@ -14,7 +14,7 @@ type Step = 'menu' | 'camera' | 'checkin' | 'route';
 export default function CreateActionMenu({
   isOpen,
   onClose,
-  visitas 
+  visitas
 }: {
   isOpen: boolean,
   onClose: () => void,
@@ -34,7 +34,9 @@ export default function CreateActionMenu({
   }, [isOpen]);
 
   return (
-    <AnimatePresence mode="wait"> 
+    /* 🚀 CORREÇÃO: Removemos o mode="wait" ou alteramos para o comportamento padrão.
+       Como o fundo e o menu sobem juntos, o Framer Motion gerencia múltiplos filhos perfeitamente sem o "wait". */
+    <AnimatePresence>
       {isOpen && (
         <motion.div key="create-action-wrapper" className="relative z-[60]">
           {/* Fundo escuro (Overlay) */}

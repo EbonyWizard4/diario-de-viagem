@@ -150,7 +150,7 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
                     value={local}
                     onChange={(e) => setLocal(e.target.value)}
                     placeholder="Ex: Museu do Ipiranga"
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-500 outline-none"
                 />
             </div>
             {/* imput de estrelas */}
@@ -173,7 +173,7 @@ export default function CheckinForm({ onBack, onSuccess, photo, initialData }: C
                     onChange={(e) => setComentario(e.target.value)}
                     placeholder="Conte um pouco sobre o lugar..."
                     rows={3}
-                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none resize-none"
+                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-500 outline-none resize-none min-h-[120px]"
                 />
             </div>
 
