@@ -14,6 +14,7 @@ export interface RouteData {
     value: number | string;
     unit: string;
   };
+  stops?: string[];
 }
 
 /**
