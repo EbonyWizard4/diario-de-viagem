@@ -139,13 +139,13 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
                 <input
                     type="text"
                     placeholder="Nome do Roteiro"
-                    className="w-full p-4 rounded-2xl bg-gray-50 border-none font-black text-lg focus:ring-2 focus:ring-orange-500 shadow-inner"
+                    className="w-full p-4 rounded-2xl bg-gray-50 border-none text-gray-900 placeholder-gray-400 font-black text-lg focus:ring-2 focus:ring-orange-500 shadow-inner"
                     value={routeName}
                     onChange={(e) => setRouteName(e.target.value)}
                 />
                 <textarea
                     placeholder="Dê uma breve descrição desta jornada..."
-                    className="w-full p-4 rounded-2xl bg-gray-50 border-none text-sm focus:ring-2 focus:ring-orange-500 h-24 resize-none"
+                    className="w-full p-4 rounded-2xl bg-gray-50 border-none text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-500 h-24 resize-none"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                 />
@@ -155,19 +155,19 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
             <div className="grid grid-cols-2 gap-4">
                 {/* Seletor de Tempo */}
                 <div className="bg-gray-50 p-4 rounded-2xl space-y-2">
-                    <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <label className="flex items-center gap-2 text-[10px] font-black text-gray-900 placeholder-gray-400 uppercase tracking-widest">
                         <Clock size={12} /> Tempo Estimado
                     </label>
                     <div className="flex gap-2">
                         <input
                             type="number"
                             placeholder="0"
-                            className="w-16 bg-white border-none rounded-xl p-2 font-bold text-center"
+                            className="w-16 bg-white border-none rounded-xl text-gray-900 placeholder-gray-400p-2 font-bold text-center"
                             value={timeValue}
                             onChange={(e) => setTimeValue(e.target.value)}
                         />
                         <select
-                            className="flex-1 bg-white border-none rounded-xl p-2 text-xs font-bold"
+                            className="flex-1 bg-white border-none rounded-xl text-gray-900 placeholder-gray-400 p-2 text-xs font-bold"
                             value={timeUnit}
                             onChange={(e) => setTimeUnit(e.target.value)}
                         >
@@ -180,11 +180,11 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
 
                 {/* Seletor de Custo */}
                 <div className="bg-gray-50 p-4 rounded-2xl space-y-2">
-                    <label className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <label className="flex items-center gap-2 text-[10px] font-black text-gray-900 placeholder-gray-400 uppercase tracking-widest">
                         <DollarSign size={12} /> Custo Médio
                     </label>
                     <select
-                        className="w-full bg-white border-none rounded-xl p-2 text-xs font-bold appearance-none"
+                        className="w-full bg-white border-none rounded-xl p-2 text-gray-900 placeholder-gray-400text-xs font-bold appearance-none"
                         value={costLevel}
                         onChange={(e) => setCostLevel(e.target.value)}
                     >
@@ -198,7 +198,7 @@ export default function RouteCreator({ visitas, onSuccess }: { visitas: any[], o
 
             {/* Seleção de Visitas (Horizontal Scroll) */}
             <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 px-1">
+                <p className="text-[10px] font-black text-gray-900 placeholder-gray-400 uppercase tracking-widest mb-3 px-1">
                     Selecione os pontos da rota ({selectedIds.length})
                 </p>
                 <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">

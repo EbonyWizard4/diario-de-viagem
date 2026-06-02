@@ -38,9 +38,11 @@ export default function BottomNav() {
     }
   };
 
-  const handlePlusClick = async () => {
+  const handlePlusClick = async (e: React.MouseEvent) => {
     if (loading) return;
     if (!user) {
+      e.preventDefault(); // Bloqueia o redirecionamento do <Link>
+      alert("Para adicionar suas visitas, criar suas rotas e ganhar XP, faça login na sua conta!");
       router.push('/perfil');
       return;
     }

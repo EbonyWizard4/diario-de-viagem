@@ -24,84 +24,7 @@ export default function BuscaPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
 
-  // 1. Pegar localização para o cálculo de distância no RouteCard
-  useEffect(() => {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-    });
-  }, []);
-
-  // 2. Buscar as rotas reais do Firebase
-
-  useEffect(() => {
-    async function carregarRotas() {
-      setLoading(true);
-      try {
-        const q = query(collection(db, 'routes'));
-        const snap = await getDocs(q);
-
-        // Aqui está o "pulo do gato"
-        const listaComDetalhes = await Promise.all(snap.docs.map(async (routeDoc) => {
-          const data = routeDoc.data();
-          const stopsIds = data.stops || [];
-
-          // Buscamos os dados de cada parada (checkin/local)
-          const stopsPromessas = stopsIds.map(async (stopId: string) => {
-            const stopDoc = await getDoc(doc(db, 'checkins', stopId));
-            if (stopDoc.exists()) {
-              const sData = stopDoc.data();
-              return {
-                id: stopDoc.id,
-                name: sData.name || sData.title,
-                // Ajuste conforme o nome do campo no seu Firebase (latitude ou lat)
-                lat: sData.location?.latitude || sData.lat,
-                lng: sData.location?.longitude || sData.lng
-              };
-            }
-            return null;
-          });
-
-          const stopsResolved = (await Promise.all(stopsPromessas)).filter(s => s !== null);
-
-          return {
-            id: routeDoc.id,
-            ...data,
-            stopsData: stopsResolved // Agora o MapView vai encontrar os dados aqui!
-          };
-        }));
-
-        setRotas(listaComDetalhes);
-      } catch (e) {
-        console.error("Erro ao hidratar rotas:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    carregarRotas();
-  }, []);
-
-  // 3. Lógica de filtro atualizada (Pesquisa + Categoria)
-  const resultados = rotas.filter(rota => {
-    const matchesPesquisa =
-      rota.title?.toLowerCase().includes(pesquisa.toLowerCase()) ||
-      rota.bairro?.toLowerCase().includes(pesquisa.toLowerCase());
-
-    const matchesCategoria = categoriaSelecionada
-      ? rota.category === categoriaSelecionada
-      : true;
-
-    return matchesPesquisa && matchesCategoria;
-  });
-
-
-  const CATEGORIAS = [
-    { id: 'gastronomia', label: 'Gastronomia', icon: '🍕' },
-    { id: 'artes', label: 'Artes', icon: '🎨' },
-    { id: 'passeios', label: 'Passeios', icon: '🚲' },
-    { id: 'role', label: 'Rolê', icon: '🏙️' },
-  ];
-
-  // Dentro da BuscaPage()
+  // 1. Captura de Localização Única e Segura (com Fallback)
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -112,17 +35,93 @@ export default function BuscaPage() {
           });
         },
         (error) => {
-          console.error("Erro ao obter localização", error);
-          // Fallback: se o usuário negar, você pode setar a posição de Franco da Rocha ou SP
+          console.warn("Acesso à localização negado ou indisponível. Usando fallback padrão.");
+          // Posição de fallback para a banca não ver mapa quebrado (-23.3275, -46.7272)
           setUserLocation({ lat: -23.3275, lng: -46.7272 });
         }
       );
     }
   }, []);
 
+  // 2. Buscar e Hidratar as rotas reais do Firebase com Higienização de Categorias
+  useEffect(() => {
+    async function carregarRotas() {
+      setLoading(true);
+      try {
+        const q = query(collection(db, 'routes'));
+        const snap = await getDocs(q);
+        
+        const listaComDetalhes = await Promise.all(snap.docs.map(async (routeDoc) => {
+          const data = routeDoc.data();
+          const stopsIds = data.stops || [];
+
+          // Buscamos os dados de cada parada na coleção checkins
+          const stopsPromessas = stopsIds.map(async (stopId: string) => {
+            try {
+              const stopDoc = await getDoc(doc(db, 'checkins', stopId));
+              if (stopDoc.exists()) {
+                const sData = stopDoc.data();
+                
+                // 🚀 TRATAMENTO CRÍTICO: Limpa aspas duplas, espaços e joga para minúsculo (ex: '""artes""' vira 'artes')
+                const categoriaLimpa = sData.category 
+                  ? sData.category.replace(/[^a-zA-Z0-9áéíóúâêîôûãõç]/g, '').toLowerCase()
+                  : null;
+
+                return {
+                  id: stopDoc.id,
+                  name: sData.placeName || sData.name || sData.title || "Parada",
+                  lat: sData.location?.latitude || sData.lat,
+                  lng: sData.location?.longitude || sData.lng,
+                  category: categoriaLimpa // Salva a categoria higienizada no stop
+                };
+              }
+            } catch (err) {
+              console.error(`Erro ao ler checkin ${stopId}:`, err);
+            }
+            return null;
+          });
+
+          const stopsResolved = (await Promise.all(stopsPromessas)).filter(s => s !== null);
+
+          // 🎯 Se a rota principal não tiver categoria, ela herda a categoria tratada do primeiro stop
+          // Joga para minúsculo também caso a rota principal possua o campo modificado no futuro
+          const categoriaOriginalRota = data.category ? data.category.replace(/[^a-zA-Z0-9áéíóúâêîôûãõç]/g, '').toLowerCase() : null;
+          const categoriaDaRota = categoriaOriginalRota || (stopsResolved[0]?.category) || 'passeios';
+
+          return {
+            id: routeDoc.id,
+            ...data,
+            category: categoriaDaRota, // Agora injetado em minúsculo: 'artes', 'gastronomia', etc.
+            stopsData: stopsResolved
+          };
+        }));
+
+        setRotas(listaComDetalhes);
+      } catch (e) {
+        console.error("Erro crítico ao hidratar rotas na busca:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    carregarRotas();
+  }, []);
+
+  // 3. Lógica de filtragem (Pesquisa + Categoria)
+  const resultados = rotas.filter(rota => {
+    const matchesPesquisa =
+      (rota.title?.toLowerCase().includes(pesquisa.toLowerCase())) ||
+      (rota.bairro?.toLowerCase().includes(pesquisa.toLowerCase()));
+
+    const matchesCategoria = categoriaSelecionada
+      ? rota.category === categoriaSelecionada
+      : true;
+
+    return matchesPesquisa && matchesCategoria;
+  });
+
   return (
     <main className="flex flex-col min-h-screen bg-gray-50 pb-20">
-      {/* Header (Mantido conforme seu código, mas com z-index fixo) */}
+      {/* Header */}
       <header className="bg-white p-6 pb-4 sticky top-0 z-30 shadow-sm border-b border-gray-100">
         <div className="flex items-center gap-4 mb-4">
           <Link href="/">
@@ -131,7 +130,7 @@ export default function BuscaPage() {
           <h1 className="text-xl font-black text-gray-900 italic uppercase">Explorar</h1>
         </div>
 
-        {/* Botão de Filtros */}
+        {/* Barra de pesquisa e Filtros */}
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -144,17 +143,15 @@ export default function BuscaPage() {
             />
           </div>
 
-          {/* Botão que agora controla o componente à parte */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`p-3 rounded-2xl transition-all active:scale-95 ${showFilters || categoriaSelecionada ? 'bg-orange-600 text-white shadow-lg' : 'bg-orange-50 text-orange-600'
-              }`}
+            className={`p-3 rounded-2xl transition-all active:scale-95 ${showFilters || categoriaSelecionada ? 'bg-orange-600 text-white shadow-lg' : 'bg-orange-50 text-orange-600'}`}
           >
             <SlidersHorizontal className="w-5 h-5" />
           </button>
         </div>
 
-        {/* botão de escolha Lista Mapa */}
+        {/* Seletor Lista / Mapa */}
         <div className="flex mt-4 bg-gray-100 p-1 rounded-xl">
           <button
             onClick={() => setViewMode('lista')}
@@ -170,7 +167,6 @@ export default function BuscaPage() {
           </button>
         </div>
 
-        {/* Instância do componente de Filtro */}
         <FilterBar
           isOpen={showFilters}
           selectedCategory={categoriaSelecionada}
@@ -178,20 +174,31 @@ export default function BuscaPage() {
         />
       </header>
 
-      {/* Resultados */}
+      {/* Seção de Resultados */}
       <section className="p-6">
-        {viewMode === 'lista' ? (
-          <div className="space-y-6">
-            {resultados.map((rota) => (
-              <RouteCardBusca key={rota.id} rota={rota} userLocation={userLocation} />
-            ))}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+            <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+            <span className="text-xs font-bold uppercase tracking-widest">Carregando roteiros...</span>
           </div>
+        ) : resultados.length > 0 ? (
+          viewMode === 'lista' ? (
+            <div className="space-y-6">
+              {resultados.map((rota) => (
+                <RouteCardBusca key={rota.id} rota={rota} userLocation={userLocation} />
+              ))}
+            </div>
+          ) : (
+            <div className="animate-in fade-in duration-500">
+              <MapView rotas={resultados} userLocation={userLocation} />
+              <p className="mt-4 text-[10px] text-gray-400 font-bold uppercase text-center tracking-widest">
+                Toque nos pins para ver detalhes das rotas
+              </p>
+            </div>
+          )
         ) : (
-          <div className="animate-in fade-in duration-500">
-            <MapView rotas={resultados} userLocation={userLocation} />
-            <p className="mt-4 text-[10px] text-gray-400 font-bold uppercase text-center tracking-widest">
-              Toque nos pins para ver detalhes das rotas
-            </p>
+          <div className="text-center py-12 text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-3xl bg-white p-6">
+            Nenhum roteiro encontrado para os termos buscados.
           </div>
         )}
       </section>
