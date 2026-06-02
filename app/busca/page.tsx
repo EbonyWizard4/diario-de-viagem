@@ -138,7 +138,7 @@ export default function BuscaPage() {
             <input
               type="text"
               placeholder="Para onde vamos?"
-              className="w-full bg-gray-100 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+              className="w-full bg-gray-100 border-none rounded-2xl text-gray-900 placeholder-gray-400 py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
               value={pesquisa}
               onChange={(e) => setPesquisa(e.target.value)}
             />
