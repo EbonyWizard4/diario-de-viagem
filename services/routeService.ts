@@ -7,10 +7,13 @@ export interface RouteData {
   title: string;
   imageUrl?: string;
   stopsCount: number;
-  duration: string;
   bairro: string;
   rating: number;
   tags: string[];
+  duration: {
+    value: number | string;
+    unit: string;
+  };
 }
 
 /**
