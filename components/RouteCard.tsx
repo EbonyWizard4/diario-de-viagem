@@ -1,9 +1,8 @@
 // components/RouteCard.tsx
-
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Navigation, Clock, MapPin, Heart, Zap } from 'lucide-react'; // Importei o Zap
+import { Navigation, Clock, MapPin, Heart, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { db } from '@/lib/firebase';
@@ -12,49 +11,61 @@ import { calculateDistance } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { isRouteFavorite, toggleFavorite } from '@/services/checkinService';
 import { getRouteProgress, XP_VALUES } from '@/services/gamificationService';
-
-import ProgressBar from './ProgressBar'; // Importe o que criamos acima
+import { useRouter } from 'next/navigation'; // Importe o router do Next.js
+import ProgressBar from './ProgressBar';
 
 interface RouteCardProps {
   rota: any;
   userLocation?: { lat: number; lng: number } | null;
-  variant?: 'default' | 'challenge'; // 👈 A mágica está aqui
+  variant?: 'default' | 'challenge';
 }
+
 export default function RouteCardBusca({ rota, userLocation, variant = 'default' }: RouteCardProps) {
   const [capaUrl, setCapaUrl] = useState<string | null>(null);
   const [distancia, setDistancia] = useState<string | null>(null);
   const { user } = useAuth();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [progresso, setProgresso] = useState(0);
 
-  // Valor de XP que o usuário ganha ao completar esta rota específica
   const pontosRota = XP_VALUES.COMPLETAR_ROTA;
 
-  // Simulação de progresso (no futuro você buscará quantos check-ins o user fez nessa rota)
-  const paradasConcluidas = rota.userProgress || 0;
+  const router = useRouter();
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault(); // Bloqueia o redirecionamento do <Link>
+      alert("Para explorar os detalhes deste roteiro, ver paradas e ganhar XP, faça login na sua conta!");
+      // Opcional: router.push('/login'); -> Se quiser mandar direto para a tela de login
+      router.push('/perfil');
+      return;
+    }
+  };
+
+  // 1. Verificar Favoritos (Protegido contra usuário deslogado)
   useEffect(() => {
     if (user && rota.id) {
       isRouteFavorite(user.uid, rota.id).then(setIsFavorite);
+    } else {
+      setIsFavorite(false); // Se não houver usuário, apenas inicia como falso
     }
   }, [user, rota.id]);
 
-  const handleFavoriteClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!user) return alert("Faça login para favoritar!");
-    const status = await toggleFavorite(user.uid, rota.id);
-    setIsFavorite(status);
-  };
-
+  // 2. Buscar Dados da Parada Real (Mudado de 'checkpoints' de volta para 'checkins')
   useEffect(() => {
     async function fetchDados() {
       if (rota.stops && rota.stops.length > 0) {
         try {
-          // Buscamos a primeira parada para usar como capa do card
-          const stopDoc = await getDoc(doc(db, 'checkins', rota.stops[0]));
+          const primeiroStopId = rota.stops[0];
+
+          /* 🎯 O PULO DO GATO: Apontando para 'checkins' onde os IDs realmente existem */
+          const stopDoc = await getDoc(doc(db, 'checkins', primeiroStopId));
+
+          let urlEncontrada = "";
+
           if (stopDoc.exists()) {
             const stopData = stopDoc.data();
-            setCapaUrl(stopData.imageUrl || stopData.photoUrl);
+            // Pega o campo de imagem (testando as três nomenclaturas mais comuns)
+            urlEncontrada = stopData.imageUrl || stopData.photoUrl || stopData.image || "";
 
             const geoPoint = stopData.location;
             if (userLocation && geoPoint?.latitude) {
@@ -67,36 +78,56 @@ export default function RouteCardBusca({ rota, userLocation, variant = 'default'
               setDistancia(d < 1 ? `${(d * 1000).toFixed(0)}m` : `${d.toFixed(1)}km`);
             }
           }
+
+          // Se achou uma imagem válida e não for o avatar padrão do Google, aplica ela
+          if (urlEncontrada && !urlEncontrada.includes('googleusercontent.com')) {
+            setCapaUrl(urlEncontrada);
+          } else if (rota.imageUrl || rota.image) {
+            // Se a parada não tiver foto, mas a rota em si tiver uma imagem de capa
+            setCapaUrl(rota.imageUrl || rota.image);
+          } else {
+            // Último caso: imagem padrão bonita do Unsplash para não ficar vazio
+            setCapaUrl("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80");
+          }
+
         } catch (e) {
-          console.error("Erro no card:", e);
+          console.error("Erro ao ler dados no RouteCard:", e);
+          setCapaUrl("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80");
         }
       }
     }
     fetchDados();
   }, [rota.stops, userLocation]);
 
-  // Dentro do seu RouteCardBusca
-  const [progresso, setProgresso] = useState(0);
-
+  // 3. Calcular Progresso do Desafio (Só busca se houver usuário autenticado)
   useEffect(() => {
     async function calcularProgressoReal() {
       if (user && variant === 'challenge' && rota.stops) {
         const concluidos = await getRouteProgress(user.uid, rota.stops);
         setProgresso(concluidos);
+      } else {
+        setProgresso(0); // Visitante anônimo vê o desafio zerado
       }
     }
     calcularProgressoReal();
   }, [user, rota.stops, variant]);
 
-
+  // Ação de favoritar bloqueia o clique e pede login de forma amigável
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) return alert("Faça login para favoritar e salvar este roteiro!");
+    const status = await toggleFavorite(user.uid, rota.id);
+    setIsFavorite(status);
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="block group"
+      className="block group relative" // Adicionado relative para os badges absolutos se posicionarem corretamente
     >
-      <Link href={`/roteiro/${rota.id}`}>
+      <Link href={`/roteiro/${rota.id}`} onClick={handleCardClick}>
         <div className={`bg-white rounded-[32px] overflow-hidden border transition-all ${variant === 'challenge' ? 'border-orange-200 shadow-md' : 'border-gray-100 shadow-sm'
           }`}>
 
@@ -108,7 +139,7 @@ export default function RouteCardBusca({ rota, userLocation, variant = 'default'
           ) : (
             <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-orange-600 text-white px-3 py-1.5 rounded-2xl border-2 border-white">
               <Zap size={12} className="fill-white" />
-              <span className="text-[10px] font-black uppercase tracking-widest">+{XP_VALUES.COMPLETAR_ROTA} XP</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">+{pontosRota} XP</span>
             </div>
           )}
 
@@ -165,13 +196,12 @@ export default function RouteCardBusca({ rota, userLocation, variant = 'default'
               </p>
             )}
 
-            {/* 📍 SÓ EXIBE A BARRA SE FOR VARIANTE CHALLENGE */}
+            {/* Barra de progresso visível no desafio */}
             {variant === 'challenge' && (
               <ProgressBar atual={progresso} total={rota.stops?.length || 1} />
             )}
 
-            {/* footer do card */}
-
+            {/* Footer do card */}
             <div className="flex items-center justify-between border-t border-gray-50 pt-4 text-[10px] text-gray-400 font-black uppercase tracking-widest">
               <div className="flex items-center gap-2">
                 <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center text-[10px] text-orange-600 font-bold">
@@ -183,18 +213,15 @@ export default function RouteCardBusca({ rota, userLocation, variant = 'default'
               <div className="flex gap-4">
                 <span className="flex items-center gap-1.5">
                   <Clock size={14} className="text-orange-500" />
-                  {rota.duration?.value}{rota.duration?.unit ? rota.duration.unit[0] : 'h'}
+                  {rota.duration?.value || '0'}{rota.duration?.unit ? rota.duration.unit[0] : 'h'}
                 </span>
 
-                {/* 📍 TROCADO: Sai "3 Paradas" e entra "+200 XP" */}
                 <span className="flex items-center gap-1.5 text-orange-600 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">
                   <Zap size={13} className="fill-orange-600" />
                   <span>+{pontosRota} XP</span>
                 </span>
               </div>
             </div>
-
-            {/* ... restante do código abaixo ... */}
           </div>
         </div>
       </Link>

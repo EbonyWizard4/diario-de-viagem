@@ -1,24 +1,46 @@
-/* PAGINA INICIAL DO APP */
+/* app/page.tsx */
 'use client';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { HelpCircle, MapPin } from 'lucide-react';
 import { getDestaqueRoute, RouteData } from '@/services/routeService';
 
 export default function Home() {
-  const [destaque, setDestaque] = useState<RouteData | null>(null);
+  const [destaque, setDestaque] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [bairroUsuario, setBairroUsuario] = useState<string>('');
+  const [imagemDestaque, setImagemDestaque] = useState<string | null>(null);
 
   useEffect(() => {
     const carregarDestaqueDemonstracao = async () => {
       setLoading(true);
       try {
-        // Busca a primeira rota disponível de forma direta e infalível no Firestore
+        // 1. Busca a primeira rota disponível no Firestore
         const rota = await getDestaqueRoute();
         setDestaque(rota);
+
+        if (rota) {
+          // 2. Se a rota já tiver uma imagem de capa direta, usamos ela
+          if (rota.imageUrl && !rota.imageUrl.includes('googleusercontent.com')) {
+            setImagemDestaque(rota.imageUrl);
+          } 
+          // 3. 🚀 Caso não tenha, hidrata dinamicamente buscando a foto do primeiro checkin
+          else if (rota.stops && rota.stops.length > 0) {
+            const stopDoc = await getDoc(doc(db, 'checkins', rota.stops[0]));
+            if (stopDoc.exists()) {
+              const stopData = stopDoc.data();
+              const urlEncontrada = stopData.imageUrl || stopData.photoUrl || stopData.image || "";
+              
+              if (urlEncontrada && !urlEncontrada.includes('googleusercontent.com')) {
+                setImagemDestaque(urlEncontrada);
+              }
+            }
+          }
+        }
       } catch (error) {
         console.error("Falha no carregamento de demonstração:", error);
       } finally {
@@ -30,7 +52,6 @@ export default function Home() {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             console.log("Localização passiva capturada com sucesso:", position.coords);
-            // Se futuramente quiser guardar o bairro de forma passiva, a lógica entraria aqui
           },
           (error) => {
             console.warn("Geolocalização passiva ignorada ou negada.", error);
@@ -75,33 +96,22 @@ export default function Home() {
         ) : destaque ? (
           <Link href={`/roteiro/${destaque.id}`} key={destaque.id}>
             <div className="relative group cursor-pointer overflow-hidden rounded-3xl shadow-xl aspect-[4/3]">
-              {/* Image ajustada com sizes para sumir com o warning do console */}
-              {destaque.imageUrl && !destaque.imageUrl.includes('googleusercontent.com') ? (
-                <Image
-                  src={destaque.imageUrl}
-                  alt={destaque.title}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  priority
-                />
-              ) : (
-                /* Fallback robusto com imagem urbana caso a imagem do banco seja nula ou avatar do Google */
-                <Image
-                  src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=800&q=80"
-                  alt="Destaque da Cidade"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  priority
-                />
-              )}
+              
+              {/* 🎯 Imagem Dinâmica Hidratada ou Fallback caso o banco não tenha fotos */}
+              <Image
+                src={imagemDestaque || "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=800&q=80"}
+                alt={destaque.title || "Destaque da Cidade"}
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                priority
+              />
 
               <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-10" />
 
               {/* Indicador de Rota Próxima */}
               {bairroUsuario && destaque.bairro === bairroUsuario && (
-                <div className="absolute top-4 left-4 z-20 flex items-center gap-1 bg-green- green-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg animate-bounce">
+                <div className="absolute top-4 left-4 z-20 flex items-center gap-1 bg-green-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg animate-bounce">
                   <MapPin size={10} /> PERTO DE VOCÊ
                 </div>
               )}
@@ -109,7 +119,7 @@ export default function Home() {
               {/* Conteúdo do Card */}
               <div className="absolute bottom-0 left-0 p-6 z-20 w-full text-white">
                 <div className="flex gap-2 mb-2">
-                  {destaque.tags?.map((tag, idx) => (
+                  {destaque.tags?.map((tag: string, idx: number) => (
                     <span key={idx} className="text-[10px] font-bold bg-white/20 backdrop-blur-md px-2 py-1 rounded uppercase">
                       {tag}
                     </span>
@@ -117,8 +127,8 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold mb-1">{destaque.title}</h3>
                 <div className="flex items-center gap-4 text-xs opacity-90">
-                  <span>📍 {destaque.stopsCount} paradas</span>
-                  <span>⏱️ {destaque.duration?.value} {destaque.duration?.unit}</span>
+                  <span>📍 {destaque.stopsCount || 0} paradas</span>
+                  <span>⏱️ {destaque.duration?.value || '0'} {destaque.duration?.unit || 'h'}</span>
                   <span>⭐ {destaque.rating?.toFixed(1) || '5.0'}</span>
                 </div>
               </div>

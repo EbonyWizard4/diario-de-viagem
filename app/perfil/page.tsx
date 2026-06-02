@@ -114,6 +114,8 @@ export default function PerfilPage() {
     return () => unsubscribe();
   }, [user, authLoading]);
 
+  
+
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -426,7 +428,7 @@ export default function PerfilPage() {
 
           {/* --- CONTEÚDO: ROTAS --- */}
           {activeTab === 'rotas' && (
-            <div className="px-6 animate-pulse space-y-4"> {/* Garanta que tenha o padding lateral aqui */}
+            <div className="px-6 space-y-4"> 
               {rotas.length > 0 ? (
                 rotas.map((rota) => (
                   <RouteCard
