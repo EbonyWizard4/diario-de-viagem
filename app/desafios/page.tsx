@@ -78,7 +78,7 @@ export default function HomePage() {
         <input
           type="text"
           placeholder="Buscar bairro, cidade ou tipo..."
-          className="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+          className="w-full bg-gray-50 border border-gray-100 rounded-xl text-gray-900 placeholder-gray-400 py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
         />

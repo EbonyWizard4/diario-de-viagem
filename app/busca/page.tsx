@@ -33,7 +33,7 @@ export default function BuscaPage() {
             <input 
               type="text"
               placeholder="Buscar bairro, cidade ou tipo..."
-              className="w-full bg-gray-100 border-none rounded-xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500 transition-all"
+              className="w-full bg-gray-100 border-none rounded-xl text-gray-900 placeholder-gray-400 py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500 transition-all"
               value={pesquisa}
               onChange={(e) => setPesquisa(e.target.value)}
             />
